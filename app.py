@@ -61,7 +61,8 @@ st.markdown("""
     .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
     
     /* Metadata styling */
-    .metadata-row { color: #555; font-size: 0.9rem; margin-bottom: 5px; font-style: italic; }
+    .metadata-block { margin-bottom: 10px; }
+    .metadata-item { color: #444; font-size: 0.95rem; margin-bottom: 4px; display: block; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -118,16 +119,15 @@ if check_password():
                     
                     prompt = f"""
                     You are a PhD Candidate performing a Systematic Literature Review. Analyze the provided text with extreme academic rigour.
-                    Avoid excessive use of commas; provide fluid, sophisticated academic prose.
-                    
                     Structure your response using ONLY these labels:
                     [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
 
-                    Critical requirements:
-                    - [METHODOLOGY]: Critique the design, sampling strategy, and statistical validity.
+                    Requirements:
+                    - [METHODOLOGY]: Design critique, sampling, and statistical validity.
                     - [RELIABILITY]: Discuss internal/external validity and potential biases.
                     - [REFERENCE]: Provide a full, professional academic citation.
-                    - No bolding (**). No lists. Use complex academic prose.
+                    - Use sophisticated academic prose. Avoid lists or bullet points.
+                    - No bolding (**).
 
                     FULL TEXT: {text[:30000]} 
                     """
@@ -165,13 +165,19 @@ if check_password():
                     with st.container(border=True):
                         cr, ct = st.columns([1, 12]); cr.metric("Ref", r['#']); ct.subheader(r['Title'])
                         
-                        # RESTORED METADATA SECTION
-                        st.markdown(f'<div class="metadata-row"><b>Authors:</b> {r["Authors"]} | <b>Year:</b> {r["Year"]}</div>', unsafe_allow_html=True)
-                        st.markdown(f'<div class="metadata-row"><b>Full Citation:</b> {r["Reference"]}</div>', unsafe_allow_html=True)
+                        # Linear Metadata Display
+                        st.markdown(f'''
+                            <div class="metadata-block">
+                                <span class="metadata-item">🖊️ <b>Authors:</b> {r["Authors"]}</span>
+                                <span class="metadata-item">🗓️ <b>Year:</b> {r["Year"]}</span>
+                                <span class="metadata-item">🔗 <b>Full Citation:</b> {r["Reference"]}</span>
+                            </div>
+                        ''', unsafe_allow_html=True)
                         
                         st.divider()
+                        # Emoji restored to Summary
                         sec = [
-                            ("Summary", r["Summary"]), 
+                            ("📝 Summary", r["Summary"]), 
                             ("📖 Background", r["Background"]), 
                             ("⚙️ Methodology", r["Methodology"]), 
                             ("📍 Context", r["Context"]), 
@@ -191,20 +197,7 @@ if check_password():
                         for r in st.session_state.master_data:
                             evidence_base += f"Paper {r['#']} ({r['Year']}): Findings: {r['Findings']}. Methodology: {r['Methodology']}\n\n"
 
-                        synth_prompt = f"""
-                        Perform a meta-synthesis across the following academic findings. 
-                        Your output must be a sophisticated, integrative narrative. 
-                        Use ONLY these labels: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS].
-
-                        Evidence Base:
-                        {evidence_base}
-
-                        Requirements:
-                        - [OVERVIEW]: Synthesize the collective theoretical contribution.
-                        - [PATTERNS]: Identify thematic or methodological trends.
-                        - [CONTRADICTIONS]: Highlight conflicting results or theoretical gaps.
-                        - Do not use bullet points or bold text (**). 
-                        """
+                        synth_prompt = f"Meta-Synthesis Instructions: Analyze theoretical contributions, trends, and contradictions. Use [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS]. Academic prose only, no bolding.\n\nEvidence Base:\n{evidence_base}"
                         
                         raw_synth = llm.invoke([HumanMessage(content=synth_prompt)]).content
                         clean_synth = re.sub(r'\*', '', raw_synth)
