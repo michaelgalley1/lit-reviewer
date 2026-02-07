@@ -6,7 +6,7 @@ from langchain_core.messages import HumanMessage
 import re
 import time
 
-# 1. PAGE CONFIGURATION - Added "books" icon
+# 1. PAGE CONFIGURATION - Update the browser tab title and icon
 st.set_page_config(page_title="Literature Review Buddy", page_icon="📚", layout="wide")
 
 # 2. STYLING (CSS)
@@ -38,12 +38,6 @@ st.markdown("""
     }
     .section-title { font-weight: bold; color: #1f77b4; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
     .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
-    
-    /* Style for the Clear Button */
-    .clear-btn button {
-        color: #dc3545 !important;
-        border-color: #dc3545 !important;
-    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -69,7 +63,7 @@ if check_password():
     if 'master_data' not in st.session_state: st.session_state.master_data = [] 
     if 'processed_filenames' not in st.session_state: st.session_state.processed_filenames = set() 
 
-    # STICKY HEADER
+    # STICKY HEADER - Updated to Literature Review Buddy
     st.markdown('<div class="sticky-wrapper"><h1 style="margin:0; font-size: 1.8rem;">📚 Literature Review Buddy</h1><p style="color:gray; margin-bottom:5px;">Your PhD-Level Research Assistant</p></div>', unsafe_allow_html=True)
 
     with st.container():
@@ -81,6 +75,8 @@ if check_password():
             llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
 
         uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
+        
+        # Action Button
         run_review = st.button("🔬 Analyse paper", use_container_width=True)
 
         if uploaded_files and llm and run_review:
@@ -189,9 +185,9 @@ if check_password():
                             st.markdown("### 🚀 Future Research Directions")
                             st.write(get_synth("FUTURE_DIRECTIONS"))
             
-            # --- NEW: CLEAR ALL BUTTON ---
+            # CLEAR RESULTS OPTION
             st.divider()
-            if st.button("🗑️ Clear All Results", type="secondary"):
+            if st.button("🗑️ Clear Buddy's Memory", type="secondary"):
                 st.session_state.master_data = []
                 st.session_state.processed_filenames = set()
                 st.rerun()
