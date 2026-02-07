@@ -59,6 +59,9 @@ st.markdown("""
 
     .section-title { font-weight: bold; color: #1f77b4; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
     .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
+    
+    /* Metadata styling */
+    .metadata-row { color: #555; font-size: 0.9rem; margin-bottom: 5px; font-style: italic; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -113,7 +116,6 @@ if check_password():
                     reader = PdfReader(file) 
                     text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
                     
-                    # RIGOUR FIX: Instruction to use sophisticated academic prose and avoid list-heavy comma usage.
                     prompt = f"""
                     You are a PhD Candidate performing a Systematic Literature Review. Analyze the provided text with extreme academic rigour.
                     Avoid excessive use of commas; provide fluid, sophisticated academic prose.
@@ -122,9 +124,10 @@ if check_password():
                     [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
 
                     Critical requirements:
-                    - [METHODOLOGY]: Critique the epistemological approach, sampling strategy, and statistical validity.
+                    - [METHODOLOGY]: Critique the design, sampling strategy, and statistical validity.
                     - [RELIABILITY]: Discuss internal/external validity and potential biases.
-                    - No bolding (**). No lists. No bullet points.
+                    - [REFERENCE]: Provide a full, professional academic citation.
+                    - No bolding (**). No lists. Use complex academic prose.
 
                     FULL TEXT: {text[:30000]} 
                     """
@@ -135,7 +138,7 @@ if check_password():
                     def ext(label, next_l=None):
                         p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
                         m = re.search(p, res, re.DOTALL | re.IGNORECASE)
-                        return m.group(1).strip() if m else "Information not present in source text."
+                        return m.group(1).strip() if m else "Not found."
 
                     st.session_state.master_data.append({
                         "#": len(st.session_state.master_data) + 1,
@@ -161,8 +164,20 @@ if check_password():
                 for r in reversed(st.session_state.master_data):
                     with st.container(border=True):
                         cr, ct = st.columns([1, 12]); cr.metric("Ref", r['#']); ct.subheader(r['Title'])
+                        
+                        # RESTORED METADATA SECTION
+                        st.markdown(f'<div class="metadata-row"><b>Authors:</b> {r["Authors"]} | <b>Year:</b> {r["Year"]}</div>', unsafe_allow_html=True)
+                        st.markdown(f'<div class="metadata-row"><b>Full Citation:</b> {r["Reference"]}</div>', unsafe_allow_html=True)
+                        
                         st.divider()
-                        sec = [("Summary", r["Summary"]), ("📖 Background", r["Background"]), ("⚙️ Methodology", r["Methodology"]), ("📍 Context", r["Context"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]
+                        sec = [
+                            ("Summary", r["Summary"]), 
+                            ("📖 Background", r["Background"]), 
+                            ("⚙️ Methodology", r["Methodology"]), 
+                            ("📍 Context", r["Context"]), 
+                            ("💡 Findings", r["Findings"]), 
+                            ("🛡️ Reliability", r["Reliability"])
+                        ]
                         for k, v in sec:
                             st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
             
@@ -170,10 +185,8 @@ if check_password():
                 st.dataframe(pd.DataFrame(st.session_state.master_data), use_container_width=True, hide_index=True)
             
             with t3:
-                # SYNTHESIS FIX: Explicitly feeding the "Findings" and "Methodology" into the synthesis engine.
                 if len(st.session_state.master_data) > 0:
-                    with st.spinner("Buddy is performing a meta-synthesis of your current library..."):
-                        # Build the evidence base
+                    with st.spinner("Performing meta-synthesis..."):
                         evidence_base = ""
                         for r in st.session_state.master_data:
                             evidence_base += f"Paper {r['#']} ({r['Year']}): Findings: {r['Findings']}. Methodology: {r['Methodology']}\n\n"
@@ -190,7 +203,7 @@ if check_password():
                         - [OVERVIEW]: Synthesize the collective theoretical contribution.
                         - [PATTERNS]: Identify thematic or methodological trends.
                         - [CONTRADICTIONS]: Highlight conflicting results or theoretical gaps.
-                        - Do not use bullet points or bold text (**). Use complex academic prose.
+                        - Do not use bullet points or bold text (**). 
                         """
                         
                         raw_synth = llm.invoke([HumanMessage(content=synth_prompt)]).content
@@ -199,7 +212,7 @@ if check_password():
                         def get_synth(label, next_l=None):
                             p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
                             m = re.search(p, clean_synth, re.DOTALL | re.IGNORECASE)
-                            return m.group(1).strip() if m else "Synthesis currently unavailable for this metric."
+                            return m.group(1).strip() if m else "Detail not found."
 
                         with st.container(border=True):
                             st.markdown("### 🎯 Executive Overview"); st.write(get_synth("OVERVIEW", "PATTERNS"))
@@ -210,7 +223,7 @@ if check_password():
                         with st.container(border=True):
                             st.markdown("### 🚀 Future Research Directions"); st.write(get_synth("FUTURE_DIRECTIONS"))
                 else:
-                    st.info("Upload and analyse papers to generate a synthesis.")
+                    st.info("Upload papers to generate a synthesis.")
             
             st.divider()
             if st.button("🗑️ Clear Buddy's Memory", type="secondary"):
