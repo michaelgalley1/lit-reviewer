@@ -9,18 +9,28 @@ import time
 # 1. PAGE CONFIGURATION
 st.set_page_config(page_title="PhD Research Extractor", layout="wide")
 
-# 2. STYLING (CSS)
+# 2. STYLING (CSS) - Optimized for zero-gap and clean cards
 st.markdown("""
     <style>
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
+    
     .sticky-wrapper {
         position: fixed; top: 0; left: 0; width: 100%;
         background-color: white; z-index: 1000;
-        padding: 10px 50px 0px 50px; border-bottom: 2px solid #f0f2f6;
+        padding: 10px 50px 0px 50px;
+        border-bottom: 2px solid #f0f2f6;
     }
-    .main-content { margin-top: -75px; }
-    .block-container { padding-top: 0rem !important; }
+    
+    .main-content { 
+        margin-top: -75px; 
+    }
+
+    .block-container {
+        padding-top: 0rem !important;
+    }
+
     [data-testid="stFileUploader"] { padding-top: 0px !important; }
+    
     div.stButton > button:first-child {
         width: 100% !important; color: #28a745 !important;
         border: 2px solid #28a745 !important; font-weight: bold !important;
@@ -53,6 +63,7 @@ if check_password():
     if 'master_data' not in st.session_state: st.session_state.master_data = [] 
     if 'processed_filenames' not in st.session_state: st.session_state.processed_filenames = set() 
 
+    # STICKY HEADER
     st.markdown('<div class="sticky-wrapper"><h1 style="margin:0; font-size: 1.8rem;">🎓 PhD Research Extractor</h1><p style="color:gray; margin-bottom:5px;">Advanced Academic Review Mode</p></div>', unsafe_allow_html=True)
 
     with st.container():
@@ -69,43 +80,37 @@ if check_password():
         if uploaded_files and llm and run_review:
             progress_text = st.empty()
             for i, file in enumerate(uploaded_files):
-                if file.name in st.session_state.processed_filenames: 
-                    continue
+                if file.name in st.session_state.processed_filenames: continue
                 
-                # Quota protection
+                # Quota protection pause
                 if i > 0:
                     for s in range(5, 0, -1):
                         progress_text.text(f"⏳ API Cool-down... {s}s")
                         time.sleep(1)
 
                 progress_text.text(f"📖 Analyzing Full Text: {file.name}...")
-                
                 try:
-                    # Reading the FULL PDF
                     reader = PdfReader(file) 
                     text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
                     
-                    # SYSTEM PROMPT FOR PHD RIGOR
                     prompt = f"""
-                    You are a senior academic auditor. Analyze the ATTACHED FULL TEXT with extreme rigor. 
-                    Do not summarize superficially; provide a deep methodological and theoretical critique.
+                    You are a senior academic researcher. Analyze the ATTACHED FULL TEXT with extreme rigor.
+                    Provide a deep methodological and theoretical critique.
 
                     REQUIRED FORMAT:
                     Use ONLY these exact labels: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
 
-                    PHD-LEVEL EXPECTATIONS:
-                    - [METHODOLOGY]: Identify specific research design, N-values, sampling, and statistical tests.
-                    - [FINDINGS]: Interpret significance, noting effect sizes or p-values.
-                    - [RELIABILITY]: Evaluate internal/external validity and specific study limitations.
-                    - CRITICAL: Use plain text only. No asterisks (**), no bolding.
+                    EXPECTATIONS:
+                    - [METHODOLOGY]: Specific design, N-values, sampling, and statistical tests.
+                    - [FINDINGS]: Interpretation of significance, effect sizes, or p-values.
+                    - [RELIABILITY]: Evaluation of validity and specific limitations.
+                    - CRITICAL: Plain text only. No asterisks (**), no bolding.
 
-                    FULL TEXT FOR ANALYSIS:
-                    {text} 
+                    FULL TEXT: {text}
                     """
                     
                     res = llm.invoke([HumanMessage(content=prompt)]).content
-                    # Clean out all asterisks
-                    res = re.sub(r'\*', '', res)
+                    res = re.sub(r'\*', '', res) # Clean all asterisks
 
                     def ext(label, next_l=None):
                         p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
@@ -126,12 +131,12 @@ if check_password():
                         "Reliability": ext("RELIABILITY")
                     })
                     st.session_state.processed_filenames.add(file.name)
-                except Exception as e: 
-                    st.error(f"Error on {file.name}: {e}")
+                except Exception as e: st.error(f"Error on {file.name}: {e}")
             progress_text.empty()
 
         if st.session_state.master_data:
             t1, t2, t3 = st.tabs(["🖼️ Card Gallery", "📊 Master Table", "🧠 Synthesis"])
+            
             with t1:
                 for r in reversed(st.session_state.master_data):
                     with st.container(border=True):
@@ -140,19 +145,18 @@ if check_password():
                         sec = [("Summary", r["Summary"]), ("📖 Background", r["Background"]), ("⚙️ Methodology", r["Methodology"]), ("📍 Context", r["Context"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]
                         for k, v in sec:
                             st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
+            
             with t2:
                 st.dataframe(pd.DataFrame(st.session_state.master_data), use_container_width=True, hide_index=True)
+            
             with t3:
-                with t3:
                 if llm:
                     f_list = [f"Paper {r['#']} ({r['Title']}): {r['Findings']}" for r in st.session_state.master_data]
                     with st.spinner("Generating Meta-Synthesis..."):
-                        # Structured prompt for a boxed layout
                         synth_prompt = f"""
                         Perform a PhD-level meta-synthesis of these findings. 
-                        Provide the response using these EXACT labels: 
-                        [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS].
-                        Use plain text only. No asterisks (**).
+                        Use these EXACT labels: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS].
+                        Plain text only. No asterisks (**).
                         
                         Data: {" / ".join(f_list)}
                         """
@@ -164,7 +168,6 @@ if check_password():
                             m = re.search(p, clean_synth, re.DOTALL | re.IGNORECASE)
                             return m.group(1).strip() if m else "Synthesis detail not found."
 
-                        # Visual Boxes
                         with st.container(border=True):
                             st.markdown("### 🎯 Executive Overview")
                             st.write(get_synth("OVERVIEW", "PATTERNS"))
@@ -180,4 +183,5 @@ if check_password():
                         with st.container(border=True):
                             st.markdown("### 🚀 Future Research Directions")
                             st.write(get_synth("FUTURE_DIRECTIONS"))
+
     st.markdown('</div>', unsafe_allow_html=True)
