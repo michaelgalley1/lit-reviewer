@@ -6,38 +6,114 @@ from langchain_core.messages import HumanMessage
 import re
 import time
 
-# 1. PAGE CONFIGURATION - Update the browser tab title and icon
+# 1. PAGE CONFIGURATION
 st.set_page_config(page_title="Literature Review Buddy", page_icon="📚", layout="wide")
 
-# 2. STYLING (CSS)
+# 2. BRANDED STYLING (CSS)
 st.markdown("""
     <style>
-    [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
+    /* Load Custom Fonts */
+    @import url('https://fonts.googleapis.com/css2?family=REM:wght@600;800&display=swap');
+    
+    /* Global Styles */
+    html, body, [class*="css"] {
+        font-family: 'Averta', 'Century Gothic', sans-serif;
+        background-color: #F7EFDE; /* Stone */
+        color: #000000; /* Black */
+    }
+
+    /* Titles and Headers */
+    h1, h2, h3, .section-title {
+        font-family: 'REM', sans-serif !important;
+        color: #0000FF !important; /* Blue */
+    }
+
+    [data-testid="stHeader"] { background-color: rgba(0,0,0,0); }
     
     .sticky-wrapper {
         position: fixed; top: 0; left: 0; width: 100%;
-        background-color: white; z-index: 1000;
-        padding: 10px 50px 0px 50px;
-        border-bottom: 2px solid #f0f2f6;
+        background-color: #FFFFFF; z-index: 1000;
+        padding: 15px 50px 10px 50px;
+        border-bottom: 3px solid #97D9E3; /* Sea */
     }
     
     .main-content { 
-        margin-top: -75px; 
+        margin-top: -65px; 
     }
 
     .block-container {
         padding-top: 0rem !important;
+        background-color: #F7EFDE; /* Stone */
     }
 
-    [data-testid="stFileUploader"] { padding-top: 0px !important; }
-    
-    div.stButton > button:first-child {
-        width: 100% !important; color: #28a745 !important;
-        border: 2px solid #28a745 !important; font-weight: bold !important;
-        background-color: transparent !important;
+    /* File Uploader Customization */
+    [data-testid="stFileUploader"] { 
+        padding-top: 0px !important; 
+        background-color: #FFFFFF;
+        border-radius: 10px;
+        padding: 10px;
+        border: 2px dashed #97D9E3;
     }
-    .section-title { font-weight: bold; color: #1f77b4; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
-    .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
+    
+    /* Analyse Button - Green/Sea Theme */
+    div.stButton > button:first-child {
+        width: 100% !important; 
+        color: #FFFFFF !important;
+        background-color: #18A48C !important; /* Green */
+        border: none !important;
+        font-family: 'REM', sans-serif !important;
+        font-size: 1.1rem !important;
+        border-radius: 8px !important;
+        transition: 0.3s;
+    }
+    div.stButton > button:hover {
+        background-color: #0000FF !important; /* Blue on hover */
+    }
+
+    /* Tabs Styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 10px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        background-color: #FFFFFF;
+        border-radius: 5px 5px 0 0;
+        padding: 10px 20px;
+        color: #000000;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #97D9E3 !important; /* Sea */
+        border-bottom: 3px solid #0000FF !important;
+    }
+
+    /* Buddy Cards */
+    [data-testid="stExpander"], div[data-testid="stVerticalBlock"] > div[style*="border: 1px solid"] {
+        background-color: #FFFFFF !important;
+        border: 1px solid #97D9E3 !important;
+        border-radius: 12px !important;
+        box-shadow: 4px 4px 0px #A59BEE; /* Violet Shadow */
+    }
+
+    .section-title { 
+        font-weight: 800; 
+        margin-top: 15px; 
+        display: block; 
+        text-transform: uppercase; 
+        font-size: 0.8rem; 
+        letter-spacing: 1px;
+    }
+    .section-content { 
+        display: block; 
+        margin-bottom: 10px; 
+        line-height: 1.6; 
+        color: #333333; 
+        font-family: 'Averta', 'Century Gothic', sans-serif;
+    }
+
+    /* Metric/Ref Circle */
+    [data-testid="stMetricValue"] {
+        color: #9A1BBE !important; /* Purple */
+        font-family: 'REM', sans-serif !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -45,9 +121,9 @@ st.markdown("""
 def check_password():
     correct_password = st.secrets.get("APP_PASSWORD")
     if "password_correct" not in st.session_state:
-        st.markdown("### 🔒 Buddy Access Gateway")
+        st.markdown("<h3 style='text-align:center;'>📚 Literature Review Buddy</h3>", unsafe_allow_html=True)
         pwd = st.text_input("Enter Access Password", type="password")
-        if st.button("Unlock Tool"):
+        if st.button("Unlock Buddy"):
             if pwd == correct_password:
                 st.session_state["password_correct"] = True
                 st.rerun()
@@ -63,8 +139,13 @@ if check_password():
     if 'master_data' not in st.session_state: st.session_state.master_data = [] 
     if 'processed_filenames' not in st.session_state: st.session_state.processed_filenames = set() 
 
-    # STICKY HEADER - Updated to Literature Review Buddy
-    st.markdown('<div class="sticky-wrapper"><h1 style="margin:0; font-size: 1.8rem;">📚 Literature Review Buddy</h1><p style="color:gray; margin-bottom:5px;">Your PhD-Level Research Assistant</p></div>', unsafe_allow_html=True)
+    # STICKY HEADER
+    st.markdown(f'''
+        <div class="sticky-wrapper">
+            <h1 style="margin:0; font-size: 1.8rem; font-family: 'REM', sans-serif;">📚 Literature Review Buddy</h1>
+            <p style="color:#18A48C; font-weight: bold; margin-bottom:5px; font-family: 'Averta', sans-serif;">Your PhD-Level Research Assistant</p>
+        </div>
+    ''', unsafe_allow_html=True)
 
     with st.container():
         st.write("##") 
@@ -75,8 +156,6 @@ if check_password():
             llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
 
         uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
-        
-        # Action Button
         run_review = st.button("🔬 Analyse paper", use_container_width=True)
 
         if uploaded_files and llm and run_review:
@@ -85,8 +164,8 @@ if check_password():
                 if file.name in st.session_state.processed_filenames: continue
                 
                 if i > 0:
-                    for s in range(5, 0, -1):
-                        progress_text.text(f"⏳ API Cool-down... {s}s")
+                    for s in range(3, 0, -1):
+                        progress_text.text(f"⏳ Buddy is taking a breath... {s}s")
                         time.sleep(1)
 
                 progress_text.text(f"📖 Buddy is reading the full text: {file.name}...")
@@ -96,17 +175,8 @@ if check_password():
                     
                     prompt = f"""
                     You are a senior academic researcher. Analyze the ATTACHED FULL TEXT with extreme rigor.
-                    Provide a deep methodological and theoretical critique.
-
-                    REQUIRED FORMAT:
-                    Use ONLY these exact labels: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
-
-                    EXPECTATIONS:
-                    - [METHODOLOGY]: Specific design, N-values, sampling, and statistical tests.
-                    - [FINDINGS]: Interpretation of significance, effect sizes, or p-values.
-                    - [RELIABILITY]: Evaluation of validity and specific limitations.
-                    - CRITICAL: Plain text only. No asterisks (**), no bolding.
-
+                    Use plain text only. No asterisks (**), no bolding.
+                    Labels: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
                     FULL TEXT: {text}
                     """
                     
@@ -116,7 +186,7 @@ if check_password():
                     def ext(label, next_l=None):
                         p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
                         m = re.search(p, res, re.DOTALL | re.IGNORECASE)
-                        return m.group(1).strip() if m else "Depth insufficient in source text"
+                        return m.group(1).strip() if m else "Analysis pending..."
 
                     st.session_state.master_data.append({
                         "#": len(st.session_state.master_data) + 1,
@@ -141,7 +211,8 @@ if check_password():
             with t1:
                 for r in reversed(st.session_state.master_data):
                     with st.container(border=True):
-                        cr, ct = st.columns([1, 12]); cr.metric("Ref", r['#']); ct.subheader(r['Title'])
+                        cr, ct = st.columns([1, 12]); cr.metric("REF", r['#']); ct.subheader(r['Title'])
+                        st.markdown(f"<p style='color:#9A1BBE; font-size:0.9rem;'>{r['Authors']} ({r['Year']})</p>", unsafe_allow_html=True)
                         st.divider()
                         sec = [("Summary", r["Summary"]), ("📖 Background", r["Background"]), ("⚙️ Methodology", r["Methodology"]), ("📍 Context", r["Context"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]
                         for k, v in sec:
@@ -152,40 +223,33 @@ if check_password():
             
             with t3:
                 if llm:
-                    f_list = [f"Paper {r['#']} ({r['Title']}): {r['Findings']}" for r in st.session_state.master_data]
-                    with st.spinner("Buddy is generating your synthesis..."):
-                        synth_prompt = f"""
-                        Perform a PhD-level meta-synthesis of these findings. 
-                        Use these EXACT labels: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS].
-                        Plain text only. No asterisks (**).
-                        
-                        Data: {" / ".join(f_list)}
-                        """
+                    f_list = [f"Paper {r['#']}: {r['Findings']}" for r in st.session_state.master_data]
+                    with st.spinner("Buddy is thinking..."):
+                        synth_prompt = f"Meta-synthesis of these findings (No asterisks, use labels [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS]):\n\n" + " / ".join(f_list)
                         raw_synth = llm.invoke([HumanMessage(content=synth_prompt)]).content
                         clean_synth = re.sub(r'\*', '', raw_synth)
 
                         def get_synth(label, next_l=None):
                             p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
                             m = re.search(p, clean_synth, re.DOTALL | re.IGNORECASE)
-                            return m.group(1).strip() if m else "Synthesis detail not found."
+                            return m.group(1).strip() if m else "Detail not found."
 
-                        with st.container(border=True):
-                            st.markdown("### 🎯 Executive Overview")
-                            st.write(get_synth("OVERVIEW", "PATTERNS"))
-                        
-                        with st.container(border=True):
-                            st.markdown("### 📈 Cross-Study Patterns")
-                            st.write(get_synth("PATTERNS", "CONTRADICTIONS"))
-                        
-                        with st.container(border=True):
-                            st.markdown("### ⚖️ Conflicts & Contradictions")
-                            st.write(get_synth("CONTRADICTIONS", "FUTURE_DIRECTIONS"))
-                        
-                        with st.container(border=True):
-                            st.markdown("### 🚀 Future Research Directions")
-                            st.write(get_synth("FUTURE_DIRECTIONS"))
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            with st.container(border=True):
+                                st.markdown("### 🎯 Overview")
+                                st.write(get_synth("OVERVIEW", "PATTERNS"))
+                            with st.container(border=True):
+                                st.markdown("### ⚖️ Conflicts")
+                                st.write(get_synth("CONTRADICTIONS", "FUTURE_DIRECTIONS"))
+                        with col2:
+                            with st.container(border=True):
+                                st.markdown("### 📈 Patterns")
+                                st.write(get_synth("PATTERNS", "CONTRADICTIONS"))
+                            with st.container(border=True):
+                                st.markdown("### 🚀 Next Steps")
+                                st.write(get_synth("FUTURE_DIRECTIONS"))
             
-            # CLEAR RESULTS OPTION
             st.divider()
             if st.button("🗑️ Clear Buddy's Memory", type="secondary"):
                 st.session_state.master_data = []
