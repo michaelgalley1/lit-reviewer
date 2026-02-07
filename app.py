@@ -9,7 +9,7 @@ import time
 # 1. PAGE CONFIGURATION
 st.set_page_config(page_title="PhD Research Extractor", layout="wide")
 
-# 2. STYLING (CSS) - DIVIDER REMOVED & GAP TIGHTENED
+# 2. STYLING (CSS) - CLEANER & TIGHTER
 st.markdown("""
     <style>
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
@@ -22,18 +22,14 @@ st.markdown("""
     }
     
     .main-content { 
-        margin-top: -50px; /* Pulls content up further */
+        margin-top: -65px; /* Maximum pull-up to eliminate the gap */
     }
 
     .block-container {
-        padding-top: 0.5rem !important; /* Minimal top padding */
+        padding-top: 0rem !important;
     }
 
-    /* Target the file uploader specifically to remove top margins */
-    [data-testid="stFileUploader"] {
-        padding-top: 0px !important;
-    }
-
+    [data-testid="stFileUploader"] { padding-top: 0px !important; }
     [data-testid="stFileUploaderContainer"] section { padding: 0px !important; }
     
     div.stButton > button:first-child {
@@ -72,14 +68,13 @@ if check_password():
     st.markdown('<div class="sticky-wrapper"><h1 style="margin:0; font-size: 1.8rem;">🎓 PhD Research Extractor</h1><p style="color:gray; margin-bottom:5px;">Gemini 2.0 Flash Analysis</p></div>', unsafe_allow_html=True)
 
     with st.container():
-        st.write("##") # Buffer for sticky header
+        st.write("##") 
         st.markdown('<div class="main-content">', unsafe_allow_html=True)
         
         llm = None
         if api_key:
             llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
 
-        # --- DIVIDER REMOVED FROM HERE ---
         uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
         run_review = st.button("🔬 Execute Full-Text Review", use_container_width=True)
 
@@ -97,8 +92,21 @@ if check_password():
                 try:
                     reader = PdfReader(file) 
                     text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
-                    prompt = f"Extract using paragraphs and labels [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. TEXT: {text[:30000]}"
+                    
+                    # STRICTOR PROMPT TO PREVENT ASTERISKS
+                    prompt = f"""
+                    Extract research data using ONLY these exact labels: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
+                    
+                    IMPORTANT: 
+                    1. Do NOT use any asterisks (**) or markdown bolding.
+                    2. Provide findings in a clear, academic paragraph.
+                    3. Text to analyze: {text[:30000]}
+                    """
+                    
                     res = llm.invoke([HumanMessage(content=prompt)]).content
+                    
+                    # CLEANUP: Remove any remaining asterisks from the AI response
+                    res = res.replace("**", "")
 
                     def ext(label, next_l=None):
                         p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
