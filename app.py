@@ -44,7 +44,7 @@ st.markdown("""
     .main-content { margin-top: -75px; }
     .block-container { padding-top: 0rem !important; }
 
-    /* UNIFIED BUTTON STYLING: Applies to Analyse Paper AND the CSV Export */
+    /* Button Styling */
     div.stButton > button:first-child, div.stDownloadButton > button:first-child {
         width: 100% !important; 
         color: var(--buddy-green) !important;
@@ -60,7 +60,17 @@ st.markdown("""
         color: white !important;
     }
 
-    .section-title { font-weight: bold; color: #1f77b4; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
+    /* UPDATED: Gallery Section Headings to #0000FF Blue */
+    .section-title { 
+        font-weight: bold; 
+        color: #0000FF !important; 
+        margin-top: 15px; 
+        display: block; 
+        text-transform: uppercase; 
+        font-size: 0.85rem; 
+        border-bottom: 1px solid #eee; 
+    }
+    
     .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
     
     .metadata-block { margin-bottom: 10px; }
@@ -125,7 +135,7 @@ if check_password():
                     Structure your response using ONLY these labels:
                     [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
 
-                    Requirements:
+                    Critical requirements:
                     - [METHODOLOGY]: Design critique, sampling, and statistical validity.
                     - [RELIABILITY]: Discuss internal/external validity and potential biases.
                     - No bolding (**). No lists. Use sophisticated academic prose.
@@ -181,7 +191,6 @@ if check_password():
                 df = pd.DataFrame(st.session_state.master_data)
                 st.dataframe(df, use_container_width=True, hide_index=True)
                 
-                # --- FULL WIDTH EXPORT BUTTON ---
                 csv = df.to_csv(index=False).encode('utf-8-sig')
                 st.download_button(
                     label="📊 Export as CSV file",
