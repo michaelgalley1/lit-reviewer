@@ -9,11 +9,23 @@ import time
 # 1. PAGE CONFIGURATION
 st.set_page_config(page_title="Literature Review Buddy", page_icon="📚", layout="wide")
 
-# 2. STYLING (CSS) - Focused on layout and header stickiness
+# 2. STYLING (CSS)
 st.markdown("""
     <style>
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
     
+    /* Global Green Branding: #18A48C */
+    :root {
+        --buddy-green: #18A48C;
+    }
+
+    /* Remove red outline/flash on input focus */
+    input:focus {
+        outline: none !important;
+        box-shadow: 0 0 0 2px rgba(24, 164, 140, 0.2) !important;
+        border-color: var(--buddy-green) !important;
+    }
+
     .sticky-wrapper {
         position: fixed; top: 0; left: 0; width: 100%;
         background-color: white; z-index: 1000;
@@ -31,11 +43,20 @@ st.markdown("""
 
     [data-testid="stFileUploader"] { padding-top: 0px !important; }
     
+    /* Primary Button Styling */
     div.stButton > button:first-child {
-        width: 100% !important; color: #28a745 !important;
-        border: 2px solid #28a745 !important; font-weight: bold !important;
+        width: 100% !important; 
+        color: var(--buddy-green) !important;
+        border: 2px solid var(--buddy-green) !important; 
+        font-weight: bold !important;
         background-color: transparent !important;
     }
+    
+    div.stButton > button:hover {
+        background-color: var(--buddy-green) !important;
+        color: white !important;
+    }
+
     .section-title { font-weight: bold; color: #1f77b4; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
     .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
     </style>
@@ -45,7 +66,7 @@ st.markdown("""
 def check_password():
     correct_password = st.secrets.get("APP_PASSWORD")
     if "password_correct" not in st.session_state:
-        st.markdown("### 🔒 Buddy Access Gateway")
+        st.markdown(f"<h3 style='color:#18A48C;'>📚 Buddy Access Gateway</h3>", unsafe_allow_html=True)
         pwd = st.text_input("Enter Access Password", type="password")
         if st.button("Unlock Tool"):
             if pwd == correct_password:
@@ -64,7 +85,12 @@ if check_password():
     if 'processed_filenames' not in st.session_state: st.session_state.processed_filenames = set() 
 
     # STICKY HEADER
-    st.markdown('<div class="sticky-wrapper"><h1 style="margin:0; font-size: 1.8rem;">📚 Literature Review Buddy</h1><p style="color:gray; margin-bottom:5px;">Your PhD-Level Research Assistant</p></div>', unsafe_allow_html=True)
+    st.markdown(f'''
+        <div class="sticky-wrapper">
+            <h1 style="margin:0; font-size: 1.8rem;">📚 Literature Review Buddy</h1>
+            <p style="color:#18A48C; margin-bottom:5px; font-weight: bold;">Your PhD-Level Research Assistant</p>
+        </div>
+    ''', unsafe_allow_html=True)
 
     with st.container():
         st.write("##") 
