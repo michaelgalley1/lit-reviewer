@@ -19,7 +19,7 @@ st.markdown("""
         --buddy-blue: #0000FF;
     }
 
-    /* Remove red outline/glow on all input states */
+    /* Input box styling */
     [data-testid="stTextInput"] div[data-baseweb="input"] {
         border: 1px solid #d3d3d3 !important;
     }
@@ -44,6 +44,7 @@ st.markdown("""
     .main-content { margin-top: -75px; }
     .block-container { padding-top: 0rem !important; }
 
+    /* Primary Analysis Button */
     div.stButton > button:first-child {
         width: 100% !important; 
         color: var(--buddy-green) !important;
@@ -60,7 +61,6 @@ st.markdown("""
     .section-title { font-weight: bold; color: #1f77b4; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
     .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
     
-    /* Metadata styling */
     .metadata-block { margin-bottom: 10px; }
     .metadata-item { color: #444; font-size: 0.95rem; margin-bottom: 4px; display: block; }
     </style>
@@ -119,15 +119,14 @@ if check_password():
                     
                     prompt = f"""
                     You are a PhD Candidate performing a Systematic Literature Review. Analyze the provided text with extreme academic rigour.
+                    Avoid excessive use of commas; provide fluid, sophisticated academic prose.
                     Structure your response using ONLY these labels:
                     [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
 
-                    Requirements:
+                    Critical requirements:
                     - [METHODOLOGY]: Design critique, sampling, and statistical validity.
                     - [RELIABILITY]: Discuss internal/external validity and potential biases.
-                    - [REFERENCE]: Provide a full, professional academic citation.
-                    - Use sophisticated academic prose. Avoid lists or bullet points.
-                    - No bolding (**).
+                    - No bolding (**). No lists. Use sophisticated academic prose.
 
                     FULL TEXT: {text[:30000]} 
                     """
@@ -164,8 +163,6 @@ if check_password():
                 for r in reversed(st.session_state.master_data):
                     with st.container(border=True):
                         cr, ct = st.columns([1, 12]); cr.metric("Ref", r['#']); ct.subheader(r['Title'])
-                        
-                        # Linear Metadata Display
                         st.markdown(f'''
                             <div class="metadata-block">
                                 <span class="metadata-item">🖊️ <b>Authors:</b> {r["Authors"]}</span>
@@ -173,22 +170,23 @@ if check_password():
                                 <span class="metadata-item">🔗 <b>Full Citation:</b> {r["Reference"]}</span>
                             </div>
                         ''', unsafe_allow_html=True)
-                        
                         st.divider()
-                        # Emoji restored to Summary
-                        sec = [
-                            ("📝 Summary", r["Summary"]), 
-                            ("📖 Background", r["Background"]), 
-                            ("⚙️ Methodology", r["Methodology"]), 
-                            ("📍 Context", r["Context"]), 
-                            ("💡 Findings", r["Findings"]), 
-                            ("🛡️ Reliability", r["Reliability"])
-                        ]
+                        sec = [("📝 Summary", r["Summary"]), ("📖 Background", r["Background"]), ("⚙️ Methodology", r["Methodology"]), ("📍 Context", r["Context"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]
                         for k, v in sec:
                             st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
             
             with t2:
-                st.dataframe(pd.DataFrame(st.session_state.master_data), use_container_width=True, hide_index=True)
+                df = pd.DataFrame(st.session_state.master_data)
+                st.dataframe(df, use_container_width=True, hide_index=True)
+                
+                # --- EXPORT BUTTON ---
+                csv = df.to_csv(index=False).encode('utf-8-sig')
+                st.download_button(
+                    label="📊 Export as CSV file",
+                    data=csv,
+                    file_name="lit_review_buddy_master_table.csv",
+                    mime="text/csv",
+                )
             
             with t3:
                 if len(st.session_state.master_data) > 0:
@@ -197,8 +195,7 @@ if check_password():
                         for r in st.session_state.master_data:
                             evidence_base += f"Paper {r['#']} ({r['Year']}): Findings: {r['Findings']}. Methodology: {r['Methodology']}\n\n"
 
-                        synth_prompt = f"Meta-Synthesis Instructions: Analyze theoretical contributions, trends, and contradictions. Use [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS]. Academic prose only, no bolding.\n\nEvidence Base:\n{evidence_base}"
-                        
+                        synth_prompt = f"Meta-Synthesis: Analyze theoretical contributions and trends. Use [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS]. Academic prose, no bolding.\n\nEvidence Base:\n{evidence_base}"
                         raw_synth = llm.invoke([HumanMessage(content=synth_prompt)]).content
                         clean_synth = re.sub(r'\*', '', raw_synth)
 
@@ -215,8 +212,6 @@ if check_password():
                             st.markdown("### ⚖️ Conflicts & Contradictions"); st.write(get_synth("CONTRADICTIONS", "FUTURE_DIRECTIONS"))
                         with st.container(border=True):
                             st.markdown("### 🚀 Future Research Directions"); st.write(get_synth("FUTURE_DIRECTIONS"))
-                else:
-                    st.info("Upload papers to generate a synthesis.")
             
             st.divider()
             if st.button("🗑️ Clear Buddy's Memory", type="secondary"):
