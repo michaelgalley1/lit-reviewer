@@ -60,7 +60,7 @@ st.markdown("""
         color: white !important;
     }
 
-    .section-title { font-weight: bold; color: #1f77b4; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
+    .section-title { font-weight: bold; color: #0000FF; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
     .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
     
     .metadata-block { margin-bottom: 10px; }
