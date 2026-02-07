@@ -9,23 +9,21 @@ import time
 # 1. PAGE CONFIGURATION
 st.set_page_config(page_title="Literature Review Buddy", page_icon="📚", layout="wide")
 
-# 2. BRANDED STYLING (CSS)
+# 2. BRANDED STYLING (CSS) - Century Gothic & White Background
 st.markdown("""
     <style>
-    /* Load Custom Fonts */
-    @import url('https://fonts.googleapis.com/css2?family=REM:wght@600;800&display=swap');
-    
     /* Global Styles */
-    html, body, [class*="css"] {
-        font-family: 'Averta', 'Century Gothic', sans-serif;
-        background-color: #F7EFDE; /* Stone */
+    html, body, [class*="css"], .stMarkdown, p, div {
+        font-family: 'Century Gothic', 'AppleGothic', sans-serif !important;
+        background-color: #FFFFFF; /* Pure White */
         color: #000000; /* Black */
     }
 
     /* Titles and Headers */
     h1, h2, h3, .section-title {
-        font-family: 'REM', sans-serif !important;
+        font-family: 'Century Gothic', sans-serif !important;
         color: #0000FF !important; /* Blue */
+        font-weight: bold;
     }
 
     [data-testid="stHeader"] { background-color: rgba(0,0,0,0); }
@@ -34,7 +32,7 @@ st.markdown("""
         position: fixed; top: 0; left: 0; width: 100%;
         background-color: #FFFFFF; z-index: 1000;
         padding: 15px 50px 10px 50px;
-        border-bottom: 3px solid #97D9E3; /* Sea */
+        border-bottom: 2px solid #97D9E3; /* Sea */
     }
     
     .main-content { 
@@ -43,76 +41,66 @@ st.markdown("""
 
     .block-container {
         padding-top: 0rem !important;
-        background-color: #F7EFDE; /* Stone */
+        background-color: #FFFFFF !important;
     }
 
-    /* File Uploader Customization */
+    /* File Uploader */
     [data-testid="stFileUploader"] { 
         padding-top: 0px !important; 
         background-color: #FFFFFF;
-        border-radius: 10px;
-        padding: 10px;
-        border: 2px dashed #97D9E3;
+        border-radius: 8px;
+        border: 1px solid #97D9E3;
     }
     
-    /* Analyse Button - Green/Sea Theme */
+    /* Analyse Button */
     div.stButton > button:first-child {
         width: 100% !important; 
         color: #FFFFFF !important;
         background-color: #18A48C !important; /* Green */
         border: none !important;
-        font-family: 'REM', sans-serif !important;
-        font-size: 1.1rem !important;
-        border-radius: 8px !important;
-        transition: 0.3s;
+        font-family: 'Century Gothic', sans-serif !important;
+        font-size: 1rem !important;
+        border-radius: 6px !important;
+        font-weight: bold;
     }
-    div.stButton > button:hover {
-        background-color: #0000FF !important; /* Blue on hover */
-    }
-
-    /* Tabs Styling */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 10px;
-    }
+    
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] { gap: 8px; }
     .stTabs [data-baseweb="tab"] {
-        background-color: #FFFFFF;
-        border-radius: 5px 5px 0 0;
-        padding: 10px 20px;
+        background-color: #f8f9fa;
+        border-radius: 4px 4px 0 0;
         color: #000000;
     }
     .stTabs [aria-selected="true"] {
         background-color: #97D9E3 !important; /* Sea */
-        border-bottom: 3px solid #0000FF !important;
+        border-bottom: 2px solid #0000FF !important;
     }
 
     /* Buddy Cards */
-    [data-testid="stExpander"], div[data-testid="stVerticalBlock"] > div[style*="border: 1px solid"] {
+    div[data-testid="stVerticalBlock"] > div[style*="border: 1px solid"] {
         background-color: #FFFFFF !important;
         border: 1px solid #97D9E3 !important;
-        border-radius: 12px !important;
-        box-shadow: 4px 4px 0px #A59BEE; /* Violet Shadow */
+        border-radius: 10px !important;
+        box-shadow: 2px 2px 8px rgba(0,0,0,0.05);
     }
 
     .section-title { 
-        font-weight: 800; 
-        margin-top: 15px; 
-        display: block; 
         text-transform: uppercase; 
-        font-size: 0.8rem; 
-        letter-spacing: 1px;
+        font-size: 0.75rem; 
+        letter-spacing: 1.5px;
+        margin-top: 10px;
+        display: block;
     }
     .section-content { 
-        display: block; 
-        margin-bottom: 10px; 
         line-height: 1.6; 
         color: #333333; 
-        font-family: 'Averta', 'Century Gothic', sans-serif;
+        display: block;
+        margin-bottom: 12px;
     }
 
-    /* Metric/Ref Circle */
+    /* Ref Badge */
     [data-testid="stMetricValue"] {
         color: #9A1BBE !important; /* Purple */
-        font-family: 'REM', sans-serif !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -139,11 +127,10 @@ if check_password():
     if 'master_data' not in st.session_state: st.session_state.master_data = [] 
     if 'processed_filenames' not in st.session_state: st.session_state.processed_filenames = set() 
 
-    # STICKY HEADER
-    st.markdown(f'''
+    st.markdown('''
         <div class="sticky-wrapper">
-            <h1 style="margin:0; font-size: 1.8rem; font-family: 'REM', sans-serif;">📚 Literature Review Buddy</h1>
-            <p style="color:#18A48C; font-weight: bold; margin-bottom:5px; font-family: 'Averta', sans-serif;">Your PhD-Level Research Assistant</p>
+            <h1 style="margin:0; font-size: 1.8rem;">📚 Literature Review Buddy</h1>
+            <p style="color:#18A48C; font-weight: bold; margin-bottom:5px;">Your PhD-Level Research Assistant</p>
         </div>
     ''', unsafe_allow_html=True)
 
@@ -165,17 +152,16 @@ if check_password():
                 
                 if i > 0:
                     for s in range(3, 0, -1):
-                        progress_text.text(f"⏳ Buddy is taking a breath... {s}s")
+                        progress_text.text(f"⏳ Buddy is resting... {s}s")
                         time.sleep(1)
 
-                progress_text.text(f"📖 Buddy is reading the full text: {file.name}...")
+                progress_text.text(f"📖 Reading: {file.name}...")
                 try:
                     reader = PdfReader(file) 
                     text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
                     
                     prompt = f"""
-                    You are a senior academic researcher. Analyze the ATTACHED FULL TEXT with extreme rigor.
-                    Use plain text only. No asterisks (**), no bolding.
+                    PhD Critique: Analyze the FULL TEXT with extreme rigor. No asterisks (**), no bolding.
                     Labels: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
                     FULL TEXT: {text}
                     """
@@ -186,7 +172,7 @@ if check_password():
                     def ext(label, next_l=None):
                         p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
                         m = re.search(p, res, re.DOTALL | re.IGNORECASE)
-                        return m.group(1).strip() if m else "Analysis pending..."
+                        return m.group(1).strip() if m else "Pending..."
 
                     st.session_state.master_data.append({
                         "#": len(st.session_state.master_data) + 1,
@@ -212,7 +198,7 @@ if check_password():
                 for r in reversed(st.session_state.master_data):
                     with st.container(border=True):
                         cr, ct = st.columns([1, 12]); cr.metric("REF", r['#']); ct.subheader(r['Title'])
-                        st.markdown(f"<p style='color:#9A1BBE; font-size:0.9rem;'>{r['Authors']} ({r['Year']})</p>", unsafe_allow_html=True)
+                        st.markdown(f"<p style='color:#9A1BBE; margin-bottom:0;'>{r['Authors']} ({r['Year']})</p>", unsafe_allow_html=True)
                         st.divider()
                         sec = [("Summary", r["Summary"]), ("📖 Background", r["Background"]), ("⚙️ Methodology", r["Methodology"]), ("📍 Context", r["Context"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]
                         for k, v in sec:
@@ -224,15 +210,15 @@ if check_password():
             with t3:
                 if llm:
                     f_list = [f"Paper {r['#']}: {r['Findings']}" for r in st.session_state.master_data]
-                    with st.spinner("Buddy is thinking..."):
-                        synth_prompt = f"Meta-synthesis of these findings (No asterisks, use labels [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS]):\n\n" + " / ".join(f_list)
+                    with st.spinner("Synthesizing..."):
+                        synth_prompt = f"Meta-synthesis (No asterisks, use labels [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS]):\n\n" + " / ".join(f_list)
                         raw_synth = llm.invoke([HumanMessage(content=synth_prompt)]).content
                         clean_synth = re.sub(r'\*', '', raw_synth)
 
                         def get_synth(label, next_l=None):
                             p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
                             m = re.search(p, clean_synth, re.DOTALL | re.IGNORECASE)
-                            return m.group(1).strip() if m else "Detail not found."
+                            return m.group(1).strip() if m else "No data."
 
                         col1, col2 = st.columns(2)
                         with col1:
