@@ -9,7 +9,7 @@ import time
 # 1. PAGE CONFIGURATION
 st.set_page_config(page_title="PhD Research Extractor", layout="wide")
 
-# 2. STYLING (CSS) - RE-WRITTEN TO AVOID SYNTAX ERRORS
+# 2. STYLING (CSS) - DIVIDER REMOVED & GAP TIGHTENED
 st.markdown("""
     <style>
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
@@ -22,11 +22,16 @@ st.markdown("""
     }
     
     .main-content { 
-        margin-top: -30px; /* Pulls content up into the gap */
+        margin-top: -50px; /* Pulls content up further */
     }
 
     .block-container {
-        padding-top: 1rem !important;
+        padding-top: 0.5rem !important; /* Minimal top padding */
+    }
+
+    /* Target the file uploader specifically to remove top margins */
+    [data-testid="stFileUploader"] {
+        padding-top: 0px !important;
     }
 
     [data-testid="stFileUploaderContainer"] section { padding: 0px !important; }
@@ -64,7 +69,7 @@ if check_password():
     if 'processed_filenames' not in st.session_state: st.session_state.processed_filenames = set() 
 
     # STICKY HEADER
-    st.markdown('<div class="sticky-wrapper"><h1 style="margin:0; font-size: 2rem;">🎓 PhD Research Extractor</h1><p style="color:gray; margin-bottom:5px;">Gemini 2.0 Flash Analysis</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="sticky-wrapper"><h1 style="margin:0; font-size: 1.8rem;">🎓 PhD Research Extractor</h1><p style="color:gray; margin-bottom:5px;">Gemini 2.0 Flash Analysis</p></div>', unsafe_allow_html=True)
 
     with st.container():
         st.write("##") # Buffer for sticky header
@@ -74,7 +79,7 @@ if check_password():
         if api_key:
             llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
 
-        st.divider()
+        # --- DIVIDER REMOVED FROM HERE ---
         uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
         run_review = st.button("🔬 Execute Full-Text Review", use_container_width=True)
 
@@ -83,7 +88,6 @@ if check_password():
             for i, file in enumerate(uploaded_files):
                 if file.name in st.session_state.processed_filenames: continue
                 
-                # Quota protection
                 if i > 0:
                     for s in range(5, 0, -1):
                         progress_text.text(f"⏳ API Cool-down... {s}s")
@@ -93,9 +97,7 @@ if check_password():
                 try:
                     reader = PdfReader(file) 
                     text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
-                    
                     prompt = f"Extract using paragraphs and labels [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. TEXT: {text[:30000]}"
-                    
                     res = llm.invoke([HumanMessage(content=prompt)]).content
 
                     def ext(label, next_l=None):
