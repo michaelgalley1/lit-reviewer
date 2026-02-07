@@ -12,6 +12,11 @@ st.set_page_config(page_title="Literature Review Buddy", page_icon="📚", layou
 # 2. STYLING (CSS)
 st.markdown("""
     <style>
+    /* Global Font Change to Century Gothic */
+    html, body, [class*="css"], .stMarkdown, .section-content, .metadata-item, button {
+        font-family: 'Century Gothic', CenturyGothic, AppleGothic, sans-serif !important;
+    }
+
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
     
     :root {
@@ -53,6 +58,7 @@ st.markdown("""
         background-color: transparent !important;
         padding-top: 10px !important;
         padding-bottom: 10px !important;
+        font-family: 'Century Gothic', CenturyGothic, AppleGothic, sans-serif !important;
     }
     
     div.stButton > button:hover, div.stDownloadButton > button:hover {
@@ -60,7 +66,7 @@ st.markdown("""
         color: white !important;
     }
 
-    /* UPDATED: Gallery Section Headings to #0000FF Blue */
+    /* Gallery Section Headings to #0000FF Blue and Century Gothic */
     .section-title { 
         font-weight: bold; 
         color: #0000FF !important; 
@@ -69,12 +75,22 @@ st.markdown("""
         text-transform: uppercase; 
         font-size: 0.85rem; 
         border-bottom: 1px solid #eee; 
+        font-family: 'Century Gothic', CenturyGothic, AppleGothic, sans-serif !important;
     }
     
-    .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
+    .section-content { 
+        display: block; 
+        margin-bottom: 10px; 
+        line-height: 1.6; 
+        color: #333; 
+    }
     
     .metadata-block { margin-bottom: 10px; }
     .metadata-item { color: #444; font-size: 0.95rem; margin-bottom: 4px; display: block; }
+
+    [data-testid="stTable"] th {
+        font-family: 'Century Gothic', CenturyGothic, AppleGothic, sans-serif !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -134,12 +150,6 @@ if check_password():
                     Avoid excessive use of commas; provide fluid, sophisticated academic prose.
                     Structure your response using ONLY these labels:
                     [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
-
-                    Critical requirements:
-                    - [METHODOLOGY]: Design critique, sampling, and statistical validity.
-                    - [RELIABILITY]: Discuss internal/external validity and potential biases.
-                    - No bolding (**). No lists. Use sophisticated academic prose.
-
                     FULL TEXT: {text[:30000]} 
                     """
                     
@@ -172,42 +182,46 @@ if check_password():
             t1, t2, t3 = st.tabs(["🖼️ Card Gallery", "📊 Master Table", "🧠 Synthesis"])
             
             with t1:
-                for r in reversed(st.session_state.master_data):
-                    with st.container(border=True):
-                        cr, ct = st.columns([1, 12]); cr.metric("Ref", r['#']); ct.subheader(r['Title'])
-                        st.markdown(f'''
-                            <div class="metadata-block">
-                                <span class="metadata-item">🖊️ <b>Authors:</b> {r["Authors"]}</span>
-                                <span class="metadata-item">🗓️ <b>Year:</b> {r["Year"]}</span>
-                                <span class="metadata-item">🔗 <b>Full Citation:</b> {r["Reference"]}</span>
-                            </div>
-                        ''', unsafe_allow_html=True)
-                        st.divider()
-                        sec = [("📝 Summary", r["Summary"]), ("📖 Background", r["Background"]), ("⚙️ Methodology", r["Methodology"]), ("📍 Context", r["Context"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]
-                        for k, v in sec:
-                            st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
+                # --- KEYWORD SEARCH FUNCTION ---
+                search_query = st.text_input("🔍 Search within your library (Title, Author, or Findings)", "")
+                
+                # Filter data based on query
+                filtered_data = [
+                    r for r in st.session_state.master_data 
+                    if search_query.lower() in r["Title"].lower() 
+                    or search_query.lower() in r["Authors"].lower() 
+                    or search_query.lower() in r["Findings"].lower()
+                ]
+
+                if not filtered_data:
+                    st.info("No papers match your search criteria.")
+                else:
+                    for r in reversed(filtered_data):
+                        with st.container(border=True):
+                            cr, ct = st.columns([1, 12]); cr.metric("Ref", r['#']); ct.subheader(r['Title'])
+                            st.markdown(f'''
+                                <div class="metadata-block">
+                                    <span class="metadata-item">🖊️ <b>Authors:</b> {r["Authors"]}</span>
+                                    <span class="metadata-item">🗓️ <b>Year:</b> {r["Year"]}</span>
+                                    <span class="metadata-item">🔗 <b>Full Citation:</b> {r["Reference"]}</span>
+                                </div>
+                            ''', unsafe_allow_html=True)
+                            st.divider()
+                            sec = [("📝 Summary", r["Summary"]), ("📖 Background", r["Background"]), ("⚙️ Methodology", r["Methodology"]), ("📍 Context", r["Context"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]
+                            for k, v in sec:
+                                st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
             
             with t2:
                 df = pd.DataFrame(st.session_state.master_data)
                 st.dataframe(df, use_container_width=True, hide_index=True)
-                
                 csv = df.to_csv(index=False).encode('utf-8-sig')
-                st.download_button(
-                    label="📊 Export as CSV file",
-                    data=csv,
-                    file_name="lit_review_buddy_master_table.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
+                st.download_button(label="📊 Export as CSV file", data=csv, file_name="lit_review_buddy_export.csv", mime="text/csv", use_container_width=True)
             
             with t3:
                 if len(st.session_state.master_data) > 0:
                     with st.spinner("Performing meta-synthesis..."):
-                        evidence_base = ""
-                        for r in st.session_state.master_data:
-                            evidence_base += f"Paper {r['#']} ({r['Year']}): Findings: {r['Findings']}. Methodology: {r['Methodology']}\n\n"
-
-                        synth_prompt = f"Meta-Synthesis: Analyze theoretical contributions and trends. Use [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS]. Academic prose, no bolding.\n\nEvidence Base:\n{evidence_base}"
+                        evidence_base = "".join([f"Paper {r['#']} ({r['Year']}): {r['Findings']}\n" for r in st.session_state.master_data])
+                        synth_prompt = f"Meta-Synthesis: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS]. No bolding. Data:\n{evidence_base}"
                         raw_synth = llm.invoke([HumanMessage(content=synth_prompt)]).content
                         clean_synth = re.sub(r'\*', '', raw_synth)
 
@@ -216,15 +230,11 @@ if check_password():
                             m = re.search(p, clean_synth, re.DOTALL | re.IGNORECASE)
                             return m.group(1).strip() if m else "Detail not found."
 
-                        with st.container(border=True):
-                            st.markdown("### 🎯 Executive Overview"); st.write(get_synth("OVERVIEW", "PATTERNS"))
-                        with st.container(border=True):
-                            st.markdown("### 📈 Cross-Study Patterns"); st.write(get_synth("PATTERNS", "CONTRADICTIONS"))
-                        with st.container(border=True):
-                            st.markdown("### ⚖️ Conflicts & Contradictions"); st.write(get_synth("CONTRADICTIONS", "FUTURE_DIRECTIONS"))
-                        with st.container(border=True):
-                            st.markdown("### 🚀 Future Research Directions"); st.write(get_synth("FUTURE_DIRECTIONS"))
-            
+                        st.markdown("### 🎯 Executive Overview"); st.write(get_synth("OVERVIEW", "PATTERNS"))
+                        st.markdown("### 📈 Cross-Study Patterns"); st.write(get_synth("PATTERNS", "CONTRADICTIONS"))
+                        st.markdown("### ⚖️ Conflicts & Contradictions"); st.write(get_synth("CONTRADICTIONS", "FUTURE_DIRECTIONS"))
+                        st.markdown("### 🚀 Future Research Directions"); st.write(get_synth("FUTURE_DIRECTIONS"))
+
             st.divider()
             if st.button("🗑️ Clear Buddy's Memory", type="secondary"):
                 st.session_state.master_data = []
