@@ -69,20 +69,23 @@ if check_password():
         if uploaded_files and llm and run_review:
             progress_text = st.empty()
             for i, file in enumerate(uploaded_files):
-                if file.name in st.session_state.processed_filenames: continue
+                if file.name in st.session_state.processed_filenames: 
+                    continue
                 
+                # Quota protection
                 if i > 0:
                     for s in range(5, 0, -1):
                         progress_text.text(f"⏳ API Cool-down... {s}s")
                         time.sleep(1)
 
-                progress_text.text(f"📖 Deep-Reading: {file.name}...")
-               try:
+                progress_text.text(f"📖 Analyzing Full Text: {file.name}...")
+                
+                try:
+                    # Reading the FULL PDF
                     reader = PdfReader(file) 
-                    # Extracts every single page without truncation
                     text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
                     
-                    # ENHANCED PHD PROMPT - NO CHARACTER LIMIT
+                    # SYSTEM PROMPT FOR PHD RIGOR
                     prompt = f"""
                     You are a senior academic auditor. Analyze the ATTACHED FULL TEXT with extreme rigor. 
                     Do not summarize superficially; provide a deep methodological and theoretical critique.
@@ -91,9 +94,9 @@ if check_password():
                     Use ONLY these exact labels: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
 
                     PHD-LEVEL EXPECTATIONS:
-                    - [METHODOLOGY]: Identify the specific epistemological approach, N-values, sampling techniques, and statistical tests (e.g., ANOVA, Regression, Thematic Analysis).
-                    - [FINDINGS]: Interpret the significance of results, noting effect sizes or p-values if present.
-                    - [RELIABILITY]: Evaluate the internal and external validity. Identify specific threats to reliability.
+                    - [METHODOLOGY]: Identify specific research design, N-values, sampling, and statistical tests.
+                    - [FINDINGS]: Interpret significance, noting effect sizes or p-values.
+                    - [RELIABILITY]: Evaluate internal/external validity and specific study limitations.
                     - CRITICAL: Use plain text only. No asterisks (**), no bolding.
 
                     FULL TEXT FOR ANALYSIS:
@@ -101,14 +104,13 @@ if check_password():
                     """
                     
                     res = llm.invoke([HumanMessage(content=prompt)]).content
-                    res = re.sub(r'\*', '', res) # Removes all asterisks
-                    
-                   
+                    # Clean out all asterisks
+                    res = re.sub(r'\*', '', res)
 
                     def ext(label, next_l=None):
                         p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
                         m = re.search(p, res, re.DOTALL | re.IGNORECASE)
-                        return m.group(1).strip() if m else "Depth insufficient in text"
+                        return m.group(1).strip() if m else "Depth insufficient in source text"
 
                     st.session_state.master_data.append({
                         "#": len(st.session_state.master_data) + 1,
@@ -124,7 +126,8 @@ if check_password():
                         "Reliability": ext("RELIABILITY")
                     })
                     st.session_state.processed_filenames.add(file.name)
-                except Exception as e: st.error(f"Error on {file.name}: {e}")
+                except Exception as e: 
+                    st.error(f"Error on {file.name}: {e}")
             progress_text.empty()
 
         if st.session_state.master_data:
@@ -143,6 +146,6 @@ if check_password():
                 if llm:
                     f_list = [f"Paper {r['#']} ({r['Title']}): {r['Findings']}" for r in st.session_state.master_data]
                     with st.spinner("Generating Meta-Synthesis..."):
-                        synth_prompt = f"Perform a high-level thematic meta-analysis and synthesis of these findings. Identify cross-study patterns and contradictions in plain text:\n\n" + "\n\n".join(f_list)
+                        synth_prompt = "Perform a high-level thematic meta-analysis and synthesis of these findings. Identify cross-study patterns and contradictions in plain text:\n\n" + "\n\n".join(f_list)
                         st.markdown(llm.invoke([HumanMessage(content=synth_prompt)]).content)
     st.markdown('</div>', unsafe_allow_html=True)
