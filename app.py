@@ -215,11 +215,5 @@ if check_password():
                             st.markdown("### ⚖️ Conflicts & Contradictions"); st.write(get_synth("CONTRADICTIONS", "FUTURE_DIRECTIONS"))
                         with st.container(border=True):
                             st.markdown("### 🚀 Future Research Directions"); st.write(get_synth("FUTURE_DIRECTIONS"))
-            
-            st.divider()
-            if st.button("🗑️ Clear Buddy's Memory", type="secondary"):
-                st.session_state.master_data = []
-                st.session_state.processed_filenames = set()
-                st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
