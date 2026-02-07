@@ -2,12 +2,12 @@ import streamlit as st
 import pandas as pd
 from pypdf import PdfReader
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage, SystemMessage  # Updated import path
+from langchain_core.messages import HumanMessage, SystemMessage
 import re
 
 st.set_page_config(page_title="PhD Literature Reviewer", layout="wide")
 
-# --- CSS: Full Width & Professional Styling ---
+# --- CSS: Full Width & Clean UI ---
 st.markdown("""
     <style>
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
@@ -18,26 +18,12 @@ st.markdown("""
     }
     .main-content { margin-top: 90px; }
     [data-testid="stFileUploaderContainer"] section { padding: 0px !important; width: 100% !important; }
-    [data-testid="stFileUploaderContainer"] section > div { height: 65px !important; min-height: 65px !important; }
-
     div.stButton > button:first-child {
         width: 100% !important; color: #28a745 !important;
         border: 2px solid #28a745 !important; font-weight: bold !important;
         margin-top: 15px; background-color: transparent !important;
-        transition: all 0.3s ease-in-out !important;
     }
-    div.stButton > button:first-child p { color: #28a745 !important; }
-    div.stButton > button:first-child:hover {
-        background-color: #F6FFF8 !important;
-        box-shadow: 0px 0px 12px rgba(40, 167, 69, 0.2) !important;
-        transform: translateY(-2px);
-    }
-    
-    .meta-container { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
-    .meta-item { display: flex; align-items: flex-start; font-size: 0.95rem; }
-    .meta-label { font-weight: bold; color: #444; min-width: 140px; }
-    .meta-value { color: #111; flex: 1; }
-    .section-title { font-weight: bold; color: #1f77b4; margin-top: 25px; margin-bottom: 5px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; padding-bottom: 3px; }
+    .section-title { font-weight: bold; color: #1f77b4; margin-top: 25px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
     .section-content { display: block; margin-bottom: 20px; line-height: 1.7; color: #333; }
     </style>
     """, unsafe_allow_html=True)
@@ -50,14 +36,18 @@ st.markdown('<div class="sticky-wrapper"><h1 style="margin:0;">🎓 PhD Research
 
 with st.container():
     st.markdown('<div class="main-content">', unsafe_allow_html=True)
-    api_key = st.text_input("Gemini API Key", value="", type="password", help="Enter your Gemini API key from Google AI Studio")
+    
+    # Use Secrets if available, else empty string
+    api_key = st.secrets.get("GEMINI_API_KEY", "")
+    if not api_key:
+        api_key = st.text_input("Gemini API Key", type="password")
     
     llm = None
     if api_key:
         llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
 
     st.divider()
-    uploaded_files = st.file_uploader("Upload academic paper here", type="pdf", accept_multiple_files=True)
+    uploaded_files = st.file_uploader("Upload academic papers", type="pdf", accept_multiple_files=True)
     run_review = st.button("🔬 Execute Full-Text Review", use_container_width=True)
 
     if uploaded_files and llm and run_review:
@@ -67,14 +57,24 @@ with st.container():
             progress_text.text(f"Analyzing: {file.name}...")
             try:
                 reader = PdfReader(file) 
-                full_text = "".join([page.extract_text() for page in reader.pages if page.extract_text()])
+                full_text = "".join([page.extract_text() for page in reader.pages if page.extract_text()]).strip()
                 
-                system_instruction = """
-                Extract data with PhD-level precision. DO NOT use lists/bullets. Use sophisticated academic paragraphs.
-                Headers required: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
+                if not full_text:
+                    st.warning(f"Could not read text from {file.name}. Skipping.")
+                    continue
+
+                prompt = f"""
+                You are a senior PhD academic reviewer. Extract data with high precision.
+                DO NOT use bullet points. Use cohesive paragraphs.
+                
+                Markers to use: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
+                
+                TEXT TO ANALYZE:
+                {full_text}
                 """
                 
-                response = llm.invoke([SystemMessage(content=system_instruction), HumanMessage(content=full_text)])
+                # Using a single HumanMessage is safer for Gemini than mixing System/Human in some cloud environments
+                response = llm.invoke([HumanMessage(content=prompt)])
                 res_text = response.content
 
                 def extract(label, next_label=None):
@@ -96,7 +96,7 @@ with st.container():
                     "Reliability": extract("RELIABILITY")
                 })
                 st.session_state.processed_filenames.add(file.name)
-            except Exception as e: st.error(f"Analysis error: {e}")
+            except Exception as e: st.error(f"Error on {file.name}: {e}")
         progress_text.empty()
 
     if st.session_state.master_data:
@@ -105,18 +105,22 @@ with st.container():
             for r in reversed(st.session_state.master_data):
                 with st.container(border=True):
                     cr, ct = st.columns([1, 12]); cr.metric("Ref", r['#']); ct.subheader(r['Title'])
-                    st.markdown(f'<div class="meta-container"><div class="meta-item"><span class="meta-label">👤 AUTHORS:</span><span class="meta-value">{r["Authors"]}</span></div><div class="meta-item"><span class="meta-label">📅 YEAR:</span><span class="meta-value">{r["Year"]}</span></div><div class="meta-item"><span class="meta-label">🔗 REFERENCE:</span><span class="meta-value">{r["Reference"]}</span></div></div>', unsafe_allow_html=True)
                     st.divider()
                     sections = [("Summary", r["Summary"]), ("📖 Background", r["Background"]), ("⚙️ Methodology", r["Methodology"]), ("📍 Context", r["Context"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]
                     for k, v in sections:
                         st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
         with t2:
-            # Table Fix: Hide the default 0,1,2 index and only show the # column
-            df = pd.DataFrame(st.session_state.master_data)
-            st.dataframe(df, use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(st.session_state.master_data), use_container_width=True, hide_index=True)
         with t3:
             if llm:
-                with st.spinner("Synthesizing..."):
-                    txt = "\n".join([f"P{r['#']}: {r['Findings']}" for r in st.session_state.master_data])
-                    st.markdown(llm.invoke([HumanMessage(content=f"Synthesize these findings:\n{txt}")]).content)
+                # Group findings and ensure they aren't empty
+                findings_list = [f"Paper {r['#']} ({r['Title']}): {r['Findings']}" for r in st.session_state.master_data if r['Findings'] != "Data not found"]
+                if findings_list:
+                    with st.spinner("Synthesizing..."):
+                        synth_query = "Perform a PhD-level meta-synthesis of these research findings:\n\n" + "\n\n".join(findings_list)
+                        synth_res = llm.invoke([HumanMessage(content=synth_query)])
+                        st.markdown(synth_res.content)
+                else:
+                    st.info("No valid findings found to synthesize yet.")
+
     st.markdown('</div>', unsafe_allow_html=True)
