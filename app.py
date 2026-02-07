@@ -6,8 +6,8 @@ from langchain_core.messages import HumanMessage
 import re
 import time
 
-# 1. PAGE CONFIGURATION
-st.set_page_config(page_title="PhD Research Extractor", layout="wide")
+# 1. PAGE CONFIGURATION - Added "books" icon
+st.set_page_config(page_title="Literature Review Buddy", page_icon="📚", layout="wide")
 
 # 2. STYLING (CSS)
 st.markdown("""
@@ -38,6 +38,12 @@ st.markdown("""
     }
     .section-title { font-weight: bold; color: #1f77b4; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
     .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
+    
+    /* Style for the Clear Button */
+    .clear-btn button {
+        color: #dc3545 !important;
+        border-color: #dc3545 !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -45,7 +51,7 @@ st.markdown("""
 def check_password():
     correct_password = st.secrets.get("APP_PASSWORD")
     if "password_correct" not in st.session_state:
-        st.markdown("### 🔒 Research Gateway")
+        st.markdown("### 🔒 Buddy Access Gateway")
         pwd = st.text_input("Enter Access Password", type="password")
         if st.button("Unlock Tool"):
             if pwd == correct_password:
@@ -64,7 +70,7 @@ if check_password():
     if 'processed_filenames' not in st.session_state: st.session_state.processed_filenames = set() 
 
     # STICKY HEADER
-    st.markdown('<div class="sticky-wrapper"><h1 style="margin:0; font-size: 1.8rem;">🎓 PhD Research Extractor</h1><p style="color:gray; margin-bottom:5px;">Advanced Academic Review Mode</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="sticky-wrapper"><h1 style="margin:0; font-size: 1.8rem;">📚 Literature Review Buddy</h1><p style="color:gray; margin-bottom:5px;">Your PhD-Level Research Assistant</p></div>', unsafe_allow_html=True)
 
     with st.container():
         st.write("##") 
@@ -75,8 +81,6 @@ if check_password():
             llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
 
         uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
-        
-        # --- BUTTON WORDING UPDATED HERE ---
         run_review = st.button("🔬 Analyse paper", use_container_width=True)
 
         if uploaded_files and llm and run_review:
@@ -89,7 +93,7 @@ if check_password():
                         progress_text.text(f"⏳ API Cool-down... {s}s")
                         time.sleep(1)
 
-                progress_text.text(f"📖 Analyzing Full Text: {file.name}...")
+                progress_text.text(f"📖 Buddy is reading the full text: {file.name}...")
                 try:
                     reader = PdfReader(file) 
                     text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
@@ -153,7 +157,7 @@ if check_password():
             with t3:
                 if llm:
                     f_list = [f"Paper {r['#']} ({r['Title']}): {r['Findings']}" for r in st.session_state.master_data]
-                    with st.spinner("Generating Meta-Synthesis..."):
+                    with st.spinner("Buddy is generating your synthesis..."):
                         synth_prompt = f"""
                         Perform a PhD-level meta-synthesis of these findings. 
                         Use these EXACT labels: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS].
@@ -184,5 +188,12 @@ if check_password():
                         with st.container(border=True):
                             st.markdown("### 🚀 Future Research Directions")
                             st.write(get_synth("FUTURE_DIRECTIONS"))
+            
+            # --- NEW: CLEAR ALL BUTTON ---
+            st.divider()
+            if st.button("🗑️ Clear All Results", type="secondary"):
+                st.session_state.master_data = []
+                st.session_state.processed_filenames = set()
+                st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
