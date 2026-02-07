@@ -12,6 +12,11 @@ st.set_page_config(page_title="Literature Review Buddy", page_icon="📚", layou
 # 2. STYLING (CSS)
 st.markdown("""
     <style>
+    /* Global Font Change to Century Gothic */
+    html, body, [class*="css"], .stMarkdown, .section-content, .metadata-item, button {
+        font-family: 'Century Gothic', CenturyGothic, AppleGothic, sans-serif !important;
+    }
+
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
     
     :root {
@@ -53,6 +58,7 @@ st.markdown("""
         background-color: transparent !important;
         padding-top: 10px !important;
         padding-bottom: 10px !important;
+        font-family: 'Century Gothic', CenturyGothic, AppleGothic, sans-serif !important;
     }
     
     div.stButton > button:hover, div.stDownloadButton > button:hover {
@@ -60,7 +66,7 @@ st.markdown("""
         color: white !important;
     }
 
-    /* UPDATED: Gallery Section Headings to #0000FF Blue */
+    /* Gallery Section Headings to #0000FF Blue and Century Gothic */
     .section-title { 
         font-weight: bold; 
         color: #0000FF !important; 
@@ -69,12 +75,23 @@ st.markdown("""
         text-transform: uppercase; 
         font-size: 0.85rem; 
         border-bottom: 1px solid #eee; 
+        font-family: 'Century Gothic', CenturyGothic, AppleGothic, sans-serif !important;
     }
     
-    .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
+    .section-content { 
+        display: block; 
+        margin-bottom: 10px; 
+        line-height: 1.6; 
+        color: #333; 
+    }
     
     .metadata-block { margin-bottom: 10px; }
     .metadata-item { color: #444; font-size: 0.95rem; margin-bottom: 4px; display: block; }
+
+    /* Ensure Table Header also uses font */
+    [data-testid="stTable"] th {
+        font-family: 'Century Gothic', CenturyGothic, AppleGothic, sans-serif !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -135,7 +152,7 @@ if check_password():
                     Structure your response using ONLY these labels:
                     [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
 
-                    Critical requirements:
+                    Requirements:
                     - [METHODOLOGY]: Design critique, sampling, and statistical validity.
                     - [RELIABILITY]: Discuss internal/external validity and potential biases.
                     - No bolding (**). No lists. Use sophisticated academic prose.
