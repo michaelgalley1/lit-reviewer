@@ -14,17 +14,25 @@ st.markdown("""
     <style>
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
     
-    /* Global Green Branding: #18A48C */
     :root {
         --buddy-green: #18A48C;
         --buddy-blue: #0000FF;
     }
 
-    /* Remove red outline/flash on input focus */
+    /* THE NUCLEAR OPTION: Remove red outline on ALL input states */
+    [data-testid="stTextInput"] div[data-baseweb="input"] {
+        border: 1px solid #d3d3d3 !important;
+    }
+    
+    /* Target focus, hover, and active states to override Streamlit's red/blue defaults */
+    [data-testid="stTextInput"] div[data-baseweb="input"]:focus-within {
+        border: 2px solid var(--buddy-green) !important;
+        box-shadow: none !important;
+    }
+    
     input:focus {
         outline: none !important;
-        box-shadow: 0 0 0 2px rgba(24, 164, 140, 0.2) !important;
-        border-color: var(--buddy-green) !important;
+        box-shadow: none !important;
     }
 
     .sticky-wrapper {
@@ -44,7 +52,6 @@ st.markdown("""
 
     [data-testid="stFileUploader"] { padding-top: 0px !important; }
     
-    /* Primary Button Styling */
     div.stButton > button:first-child {
         width: 100% !important; 
         color: var(--buddy-green) !important;
@@ -67,10 +74,7 @@ st.markdown("""
 def check_password():
     correct_password = st.secrets.get("APP_PASSWORD")
     if "password_correct" not in st.session_state:
-        # Title color changed to #0000FF Blue
         st.markdown(f"<h3 style='color:#0000FF;'>📚 Buddy Access Gateway</h3>", unsafe_allow_html=True)
-        
-        # Wording updated for the password prompt
         pwd = st.text_input("Enter password to unlock Literature Review Buddy", type="password")
         
         if st.button("Unlock Tool"):
@@ -118,24 +122,15 @@ if check_password():
                         progress_text.text(f"⏳ API Cool-down... {s}s")
                         time.sleep(1)
 
-                progress_text.text(f"📖 Buddy is reading the full text: {file.name}...")
+                progress_text.text(f"📖 Buddy is reading: {file.name}...")
                 try:
                     reader = PdfReader(file) 
                     text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
                     
                     prompt = f"""
-                    You are a senior academic researcher. Analyze the ATTACHED FULL TEXT with extreme rigor.
-                    Provide a deep methodological and theoretical critique.
-
-                    REQUIRED FORMAT:
-                    Use ONLY these exact labels: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
-
-                    EXPECTATIONS:
-                    - [METHODOLOGY]: Specific design, N-values, sampling, and statistical tests.
-                    - [FINDINGS]: Interpretation of significance, effect sizes, or p-values.
-                    - [RELIABILITY]: Evaluation of validity and specific limitations.
-                    - CRITICAL: Plain text only. No asterisks (**), no bolding.
-
+                    PhD Critique: Analyze the ATTACHED FULL TEXT with extreme rigor.
+                    Format: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
+                    CRITICAL: Plain text only. No asterisks (**), no bolding.
                     FULL TEXT: {text}
                     """
                     
@@ -145,7 +140,7 @@ if check_password():
                     def ext(label, next_l=None):
                         p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
                         m = re.search(p, res, re.DOTALL | re.IGNORECASE)
-                        return m.group(1).strip() if m else "Depth insufficient in source text"
+                        return m.group(1).strip() if m else "Depth insufficient"
 
                     st.session_state.master_data.append({
                         "#": len(st.session_state.master_data) + 1,
@@ -181,38 +176,25 @@ if check_password():
             
             with t3:
                 if llm:
-                    f_list = [f"Paper {r['#']} ({r['Title']}): {r['Findings']}" for r in st.session_state.master_data]
-                    with st.spinner("Buddy is generating your synthesis..."):
-                        synth_prompt = f"""
-                        Perform a PhD-level meta-synthesis of these findings. 
-                        Use these EXACT labels: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS].
-                        Plain text only. No asterisks (**).
-                        
-                        Data: {" / ".join(f_list)}
-                        """
+                    f_list = [f"Paper {r['#']}: {r['Findings']}" for r in st.session_state.master_data]
+                    with st.spinner("Buddy is thinking..."):
+                        synth_prompt = f"Perform a PhD-level meta-synthesis: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS]. No asterisks.\nData: {' / '.join(f_list)}"
                         raw_synth = llm.invoke([HumanMessage(content=synth_prompt)]).content
                         clean_synth = re.sub(r'\*', '', raw_synth)
 
                         def get_synth(label, next_l=None):
                             p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
                             m = re.search(p, clean_synth, re.DOTALL | re.IGNORECASE)
-                            return m.group(1).strip() if m else "Synthesis detail not found."
+                            return m.group(1).strip() if m else "Detail not found."
 
                         with st.container(border=True):
-                            st.markdown("### 🎯 Executive Overview")
-                            st.write(get_synth("OVERVIEW", "PATTERNS"))
-                        
+                            st.markdown("### 🎯 Executive Overview"); st.write(get_synth("OVERVIEW", "PATTERNS"))
                         with st.container(border=True):
-                            st.markdown("### 📈 Cross-Study Patterns")
-                            st.write(get_synth("PATTERNS", "CONTRADICTIONS"))
-                        
+                            st.markdown("### 📈 Cross-Study Patterns"); st.write(get_synth("PATTERNS", "CONTRADICTIONS"))
                         with st.container(border=True):
-                            st.markdown("### ⚖️ Conflicts & Contradictions")
-                            st.write(get_synth("CONTRADICTIONS", "FUTURE_DIRECTIONS"))
-                        
+                            st.markdown("### ⚖️ Conflicts"); st.write(get_synth("CONTRADICTIONS", "FUTURE_DIRECTIONS"))
                         with st.container(border=True):
-                            st.markdown("### 🚀 Future Research Directions")
-                            st.write(get_synth("FUTURE_DIRECTIONS"))
+                            st.markdown("### 🚀 Future Research"); st.write(get_synth("FUTURE_DIRECTIONS"))
             
             st.divider()
             if st.button("🗑️ Clear Buddy's Memory", type="secondary"):
