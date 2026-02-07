@@ -77,30 +77,33 @@ if check_password():
                         time.sleep(1)
 
                 progress_text.text(f"📖 Deep-Reading: {file.name}...")
-                try:
+               try:
                     reader = PdfReader(file) 
+                    # Extracts every single page without truncation
                     text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
                     
-                    # ENHANCED PHD PROMPT
+                    # ENHANCED PHD PROMPT - NO CHARACTER LIMIT
                     prompt = f"""
-                    You are an expert senior academic researcher and peer reviewer. 
-                    Analyze the provided text with extreme rigor, focusing on theoretical contributions, methodological nuances, and statistical validity.
+                    You are a senior academic auditor. Analyze the ATTACHED FULL TEXT with extreme rigor. 
+                    Do not summarize superficially; provide a deep methodological and theoretical critique.
 
                     REQUIRED FORMAT:
                     Use ONLY these exact labels: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
 
-                    INSTRUCTIONS FOR CONTENT QUALITY:
-                    - [SUMMARY]: Provide a dense 3-4 sentence overview of the core thesis and contribution.
-                    - [METHODOLOGY]: Detail the specific research design, sample characteristics (N=), variables, and statistical/qualitative tools used.
-                    - [FINDINGS]: Do not just list results; explain the implications of the primary data and any p-values or effect sizes mentioned.
-                    - [RELIABILITY]: Critically assess limitations, potential biases, or gaps in the study's logic.
-                    - CRITICAL: Do NOT use any bolding or asterisks (**). Use plain text only.
+                    PHD-LEVEL EXPECTATIONS:
+                    - [METHODOLOGY]: Identify the specific epistemological approach, N-values, sampling techniques, and statistical tests (e.g., ANOVA, Regression, Thematic Analysis).
+                    - [FINDINGS]: Interpret the significance of results, noting effect sizes or p-values if present.
+                    - [RELIABILITY]: Evaluate the internal and external validity. Identify specific threats to reliability.
+                    - CRITICAL: Use plain text only. No asterisks (**), no bolding.
 
-                    Text to analyze: {text[:40000]}
+                    FULL TEXT FOR ANALYSIS:
+                    {text} 
                     """
                     
                     res = llm.invoke([HumanMessage(content=prompt)]).content
-                    res = re.sub(r'\*', '', res) # Nuclear option for asterisks
+                    res = re.sub(r'\*', '', res) # Removes all asterisks
+                    
+                   
 
                     def ext(label, next_l=None):
                         p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
