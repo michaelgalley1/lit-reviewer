@@ -44,16 +44,18 @@ st.markdown("""
     .main-content { margin-top: -75px; }
     .block-container { padding-top: 0rem !important; }
 
-    /* Primary Analysis Button */
-    div.stButton > button:first-child {
+    /* UNIFIED BUTTON STYLING: Applies to Analyse Paper AND the CSV Export */
+    div.stButton > button:first-child, div.stDownloadButton > button:first-child {
         width: 100% !important; 
         color: var(--buddy-green) !important;
         border: 2px solid var(--buddy-green) !important; 
         font-weight: bold !important;
         background-color: transparent !important;
+        padding-top: 10px !important;
+        padding-bottom: 10px !important;
     }
     
-    div.stButton > button:hover {
+    div.stButton > button:hover, div.stDownloadButton > button:hover {
         background-color: var(--buddy-green) !important;
         color: white !important;
     }
@@ -123,7 +125,7 @@ if check_password():
                     Structure your response using ONLY these labels:
                     [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
 
-                    Critical requirements:
+                    Requirements:
                     - [METHODOLOGY]: Design critique, sampling, and statistical validity.
                     - [RELIABILITY]: Discuss internal/external validity and potential biases.
                     - No bolding (**). No lists. Use sophisticated academic prose.
@@ -179,13 +181,14 @@ if check_password():
                 df = pd.DataFrame(st.session_state.master_data)
                 st.dataframe(df, use_container_width=True, hide_index=True)
                 
-                # --- EXPORT BUTTON ---
+                # --- FULL WIDTH EXPORT BUTTON ---
                 csv = df.to_csv(index=False).encode('utf-8-sig')
                 st.download_button(
                     label="📊 Export as CSV file",
                     data=csv,
                     file_name="lit_review_buddy_master_table.csv",
                     mime="text/csv",
+                    use_container_width=True
                 )
             
             with t3:
