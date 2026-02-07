@@ -12,11 +12,6 @@ st.set_page_config(page_title="Literature Review Buddy", page_icon="📚", layou
 # 2. STYLING (CSS)
 st.markdown("""
     <style>
-    /* Global Font Change to Century Gothic */
-    html, body, [class*="css"], .stMarkdown, .section-content, .metadata-item, button {
-        font-family: 'Century Gothic', CenturyGothic, AppleGothic, sans-serif !important;
-    }
-
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
     
     :root {
@@ -49,7 +44,7 @@ st.markdown("""
     .main-content { margin-top: -75px; }
     .block-container { padding-top: 0rem !important; }
 
-    /* Button Styling */
+    /* UNIFIED BUTTON STYLING: Applies to Analyse Paper AND the CSV Export */
     div.stButton > button:first-child, div.stDownloadButton > button:first-child {
         width: 100% !important; 
         color: var(--buddy-green) !important;
@@ -58,7 +53,6 @@ st.markdown("""
         background-color: transparent !important;
         padding-top: 10px !important;
         padding-bottom: 10px !important;
-        font-family: 'Century Gothic', CenturyGothic, AppleGothic, sans-serif !important;
     }
     
     div.stButton > button:hover, div.stDownloadButton > button:hover {
@@ -66,32 +60,11 @@ st.markdown("""
         color: white !important;
     }
 
-    /* Gallery Section Headings to #0000FF Blue and Century Gothic */
-    .section-title { 
-        font-weight: bold; 
-        color: #0000FF !important; 
-        margin-top: 15px; 
-        display: block; 
-        text-transform: uppercase; 
-        font-size: 0.85rem; 
-        border-bottom: 1px solid #eee; 
-        font-family: 'Century Gothic', CenturyGothic, AppleGothic, sans-serif !important;
-    }
-    
-    .section-content { 
-        display: block; 
-        margin-bottom: 10px; 
-        line-height: 1.6; 
-        color: #333; 
-    }
+    .section-title { font-weight: bold; color: #1f77b4; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
+    .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
     
     .metadata-block { margin-bottom: 10px; }
     .metadata-item { color: #444; font-size: 0.95rem; margin-bottom: 4px; display: block; }
-
-    /* Ensure Table Header also uses font */
-    [data-testid="stTable"] th {
-        font-family: 'Century Gothic', CenturyGothic, AppleGothic, sans-serif !important;
-    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -208,6 +181,7 @@ if check_password():
                 df = pd.DataFrame(st.session_state.master_data)
                 st.dataframe(df, use_container_width=True, hide_index=True)
                 
+                # --- FULL WIDTH EXPORT BUTTON ---
                 csv = df.to_csv(index=False).encode('utf-8-sig')
                 st.download_button(
                     label="📊 Export as CSV file",
