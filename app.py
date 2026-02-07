@@ -9,7 +9,7 @@ import time
 # 1. PAGE CONFIGURATION
 st.set_page_config(page_title="PhD Research Extractor", layout="wide")
 
-# 2. STYLING (CSS) - Optimized for zero-gap and clean cards
+# 2. STYLING (CSS)
 st.markdown("""
     <style>
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
@@ -75,14 +75,15 @@ if check_password():
             llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
 
         uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
-        run_review = st.button("🔬 Execute High-Level Synthesis", use_container_width=True)
+        
+        # --- BUTTON WORDING UPDATED HERE ---
+        run_review = st.button("🔬 Analyse paper", use_container_width=True)
 
         if uploaded_files and llm and run_review:
             progress_text = st.empty()
             for i, file in enumerate(uploaded_files):
                 if file.name in st.session_state.processed_filenames: continue
                 
-                # Quota protection pause
                 if i > 0:
                     for s in range(5, 0, -1):
                         progress_text.text(f"⏳ API Cool-down... {s}s")
@@ -110,7 +111,7 @@ if check_password():
                     """
                     
                     res = llm.invoke([HumanMessage(content=prompt)]).content
-                    res = re.sub(r'\*', '', res) # Clean all asterisks
+                    res = re.sub(r'\*', '', res) 
 
                     def ext(label, next_l=None):
                         p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
