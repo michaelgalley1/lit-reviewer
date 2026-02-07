@@ -9,7 +9,7 @@ import time
 # 1. PAGE CONFIGURATION
 st.set_page_config(page_title="PhD Research Extractor", layout="wide")
 
-# 2. STYLING (CSS) - CLEANER & TIGHTER
+# 2. STYLING (CSS)
 st.markdown("""
     <style>
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
@@ -22,7 +22,7 @@ st.markdown("""
     }
     
     .main-content { 
-        margin-top: -65px; /* Maximum pull-up to eliminate the gap */
+        margin-top: -75px; /* Maximum pull-up */
     }
 
     .block-container {
@@ -30,7 +30,6 @@ st.markdown("""
     }
 
     [data-testid="stFileUploader"] { padding-top: 0px !important; }
-    [data-testid="stFileUploaderContainer"] section { padding: 0px !important; }
     
     div.stButton > button:first-child {
         width: 100% !important; color: #28a745 !important;
@@ -64,7 +63,6 @@ if check_password():
     if 'master_data' not in st.session_state: st.session_state.master_data = [] 
     if 'processed_filenames' not in st.session_state: st.session_state.processed_filenames = set() 
 
-    # STICKY HEADER
     st.markdown('<div class="sticky-wrapper"><h1 style="margin:0; font-size: 1.8rem;">🎓 PhD Research Extractor</h1><p style="color:gray; margin-bottom:5px;">Gemini 2.0 Flash Analysis</p></div>', unsafe_allow_html=True)
 
     with st.container():
@@ -93,20 +91,17 @@ if check_password():
                     reader = PdfReader(file) 
                     text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
                     
-                    # STRICTOR PROMPT TO PREVENT ASTERISKS
                     prompt = f"""
                     Extract research data using ONLY these exact labels: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
                     
-                    IMPORTANT: 
-                    1. Do NOT use any asterisks (**) or markdown bolding.
-                    2. Provide findings in a clear, academic paragraph.
-                    3. Text to analyze: {text[:30000]}
+                    CRITICAL: Do NOT use any bolding or asterisks. Use plain text only.
+                    Analyze: {text[:30000]}
                     """
                     
                     res = llm.invoke([HumanMessage(content=prompt)]).content
                     
-                    # CLEANUP: Remove any remaining asterisks from the AI response
-                    res = res.replace("**", "")
+                    # POWERFUL CLEANUP: This regex removes all asterisks (*) from the result
+                    res = re.sub(r'\*', '', res)
 
                     def ext(label, next_l=None):
                         p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
@@ -145,5 +140,5 @@ if check_password():
             with t3:
                 if llm:
                     f_list = [f"P{r['#']}: {r['Findings']}" for r in st.session_state.master_data]
-                    st.markdown(llm.invoke([HumanMessage(content="PhD Synthesis:\n\n" + "\n\n".join(f_list))]).content)
+                    st.markdown(llm.invoke([HumanMessage(content="PhD Synthesis (Plain Text):\n\n" + "\n\n".join(f_list))]).content)
     st.markdown('</div>', unsafe_allow_html=True)
