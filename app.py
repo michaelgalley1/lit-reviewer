@@ -17,6 +17,7 @@ st.markdown("""
     /* Global Green Branding: #18A48C */
     :root {
         --buddy-green: #18A48C;
+        --buddy-blue: #0000FF;
     }
 
     /* Remove red outline/flash on input focus */
@@ -66,8 +67,12 @@ st.markdown("""
 def check_password():
     correct_password = st.secrets.get("APP_PASSWORD")
     if "password_correct" not in st.session_state:
-        st.markdown(f"<h3 style='color:#18A48C;'>📚 Buddy Access Gateway</h3>", unsafe_allow_html=True)
-        pwd = st.text_input("Enter Access Password", type="password")
+        # Title color changed to #0000FF Blue
+        st.markdown(f"<h3 style='color:#0000FF;'>📚 Buddy Access Gateway</h3>", unsafe_allow_html=True)
+        
+        # Wording updated for the password prompt
+        pwd = st.text_input("Enter password to unlock Literature Review Buddy", type="password")
+        
         if st.button("Unlock Tool"):
             if pwd == correct_password:
                 st.session_state["password_correct"] = True
