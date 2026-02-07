@@ -24,7 +24,6 @@ st.markdown("""
         border: 1px solid #d3d3d3 !important;
     }
     
-    /* Target focus, hover, and active states to override Streamlit's red/blue defaults */
     [data-testid="stTextInput"] div[data-baseweb="input"]:focus-within {
         border: 2px solid var(--buddy-green) !important;
         box-shadow: none !important;
@@ -74,7 +73,10 @@ st.markdown("""
 def check_password():
     correct_password = st.secrets.get("APP_PASSWORD")
     if "password_correct" not in st.session_state:
-        st.markdown(f"<h3 style='color:#0000FF;'>📚 Buddy Access Gateway</h3>", unsafe_allow_html=True)
+        # HEADER UPDATED TO MATCH MAIN PAGE
+        st.markdown('<h1 style="margin:0; font-size: 1.8rem; color:#0000FF;">📚 Literature Review Buddy</h1>', unsafe_allow_html=True)
+        st.markdown('<p style="color:#18A48C; font-weight: bold; margin-bottom:20px;">Your PhD-Level Research Assistant</p>', unsafe_allow_html=True)
+        
         pwd = st.text_input("Enter password to unlock Literature Review Buddy", type="password")
         
         if st.button("Unlock Tool"):
@@ -96,7 +98,7 @@ if check_password():
     # STICKY HEADER
     st.markdown(f'''
         <div class="sticky-wrapper">
-            <h1 style="margin:0; font-size: 1.8rem;">📚 Literature Review Buddy</h1>
+            <h1 style="margin:0; font-size: 1.8rem; color:#0000FF;">📚 Literature Review Buddy</h1>
             <p style="color:#18A48C; margin-bottom:5px; font-weight: bold;">Your PhD-Level Research Assistant</p>
         </div>
     ''', unsafe_allow_html=True)
