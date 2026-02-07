@@ -9,99 +9,35 @@ import time
 # 1. PAGE CONFIGURATION
 st.set_page_config(page_title="Literature Review Buddy", page_icon="📚", layout="wide")
 
-# 2. BRANDED STYLING (CSS) - Century Gothic & White Background
+# 2. STYLING (CSS) - Focused on layout and header stickiness
 st.markdown("""
     <style>
-    /* Global Styles */
-    html, body, [class*="css"], .stMarkdown, p, div {
-        font-family: 'Century Gothic', 'AppleGothic', sans-serif !important;
-        background-color: #FFFFFF; /* Pure White */
-        color: #000000; /* Black */
-    }
-
-    /* Titles and Headers */
-    h1, h2, h3, .section-title {
-        font-family: 'Century Gothic', sans-serif !important;
-        color: #0000FF !important; /* Blue */
-        font-weight: bold;
-    }
-
-    [data-testid="stHeader"] { background-color: rgba(0,0,0,0); }
+    [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
     
     .sticky-wrapper {
         position: fixed; top: 0; left: 0; width: 100%;
-        background-color: #FFFFFF; z-index: 1000;
-        padding: 15px 50px 10px 50px;
-        border-bottom: 2px solid #97D9E3; /* Sea */
+        background-color: white; z-index: 1000;
+        padding: 10px 50px 0px 50px;
+        border-bottom: 2px solid #f0f2f6;
     }
     
     .main-content { 
-        margin-top: -65px; 
+        margin-top: -75px; 
     }
 
     .block-container {
         padding-top: 0rem !important;
-        background-color: #FFFFFF !important;
     }
 
-    /* File Uploader */
-    [data-testid="stFileUploader"] { 
-        padding-top: 0px !important; 
-        background-color: #FFFFFF;
-        border-radius: 8px;
-        border: 1px solid #97D9E3;
-    }
+    [data-testid="stFileUploader"] { padding-top: 0px !important; }
     
-    /* Analyse Button */
     div.stButton > button:first-child {
-        width: 100% !important; 
-        color: #FFFFFF !important;
-        background-color: #18A48C !important; /* Green */
-        border: none !important;
-        font-family: 'Century Gothic', sans-serif !important;
-        font-size: 1rem !important;
-        border-radius: 6px !important;
-        font-weight: bold;
+        width: 100% !important; color: #28a745 !important;
+        border: 2px solid #28a745 !important; font-weight: bold !important;
+        background-color: transparent !important;
     }
-    
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] { gap: 8px; }
-    .stTabs [data-baseweb="tab"] {
-        background-color: #f8f9fa;
-        border-radius: 4px 4px 0 0;
-        color: #000000;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: #97D9E3 !important; /* Sea */
-        border-bottom: 2px solid #0000FF !important;
-    }
-
-    /* Buddy Cards */
-    div[data-testid="stVerticalBlock"] > div[style*="border: 1px solid"] {
-        background-color: #FFFFFF !important;
-        border: 1px solid #97D9E3 !important;
-        border-radius: 10px !important;
-        box-shadow: 2px 2px 8px rgba(0,0,0,0.05);
-    }
-
-    .section-title { 
-        text-transform: uppercase; 
-        font-size: 0.75rem; 
-        letter-spacing: 1.5px;
-        margin-top: 10px;
-        display: block;
-    }
-    .section-content { 
-        line-height: 1.6; 
-        color: #333333; 
-        display: block;
-        margin-bottom: 12px;
-    }
-
-    /* Ref Badge */
-    [data-testid="stMetricValue"] {
-        color: #9A1BBE !important; /* Purple */
-    }
+    .section-title { font-weight: bold; color: #1f77b4; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
+    .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -109,9 +45,9 @@ st.markdown("""
 def check_password():
     correct_password = st.secrets.get("APP_PASSWORD")
     if "password_correct" not in st.session_state:
-        st.markdown("<h3 style='text-align:center;'>📚 Literature Review Buddy</h3>", unsafe_allow_html=True)
+        st.markdown("### 🔒 Buddy Access Gateway")
         pwd = st.text_input("Enter Access Password", type="password")
-        if st.button("Unlock Buddy"):
+        if st.button("Unlock Tool"):
             if pwd == correct_password:
                 st.session_state["password_correct"] = True
                 st.rerun()
@@ -127,12 +63,8 @@ if check_password():
     if 'master_data' not in st.session_state: st.session_state.master_data = [] 
     if 'processed_filenames' not in st.session_state: st.session_state.processed_filenames = set() 
 
-    st.markdown('''
-        <div class="sticky-wrapper">
-            <h1 style="margin:0; font-size: 1.8rem;">📚 Literature Review Buddy</h1>
-            <p style="color:#18A48C; font-weight: bold; margin-bottom:5px;">Your PhD-Level Research Assistant</p>
-        </div>
-    ''', unsafe_allow_html=True)
+    # STICKY HEADER
+    st.markdown('<div class="sticky-wrapper"><h1 style="margin:0; font-size: 1.8rem;">📚 Literature Review Buddy</h1><p style="color:gray; margin-bottom:5px;">Your PhD-Level Research Assistant</p></div>', unsafe_allow_html=True)
 
     with st.container():
         st.write("##") 
@@ -151,18 +83,28 @@ if check_password():
                 if file.name in st.session_state.processed_filenames: continue
                 
                 if i > 0:
-                    for s in range(3, 0, -1):
-                        progress_text.text(f"⏳ Buddy is resting... {s}s")
+                    for s in range(5, 0, -1):
+                        progress_text.text(f"⏳ API Cool-down... {s}s")
                         time.sleep(1)
 
-                progress_text.text(f"📖 Reading: {file.name}...")
+                progress_text.text(f"📖 Buddy is reading the full text: {file.name}...")
                 try:
                     reader = PdfReader(file) 
                     text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
                     
                     prompt = f"""
-                    PhD Critique: Analyze the FULL TEXT with extreme rigor. No asterisks (**), no bolding.
-                    Labels: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
+                    You are a senior academic researcher. Analyze the ATTACHED FULL TEXT with extreme rigor.
+                    Provide a deep methodological and theoretical critique.
+
+                    REQUIRED FORMAT:
+                    Use ONLY these exact labels: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
+
+                    EXPECTATIONS:
+                    - [METHODOLOGY]: Specific design, N-values, sampling, and statistical tests.
+                    - [FINDINGS]: Interpretation of significance, effect sizes, or p-values.
+                    - [RELIABILITY]: Evaluation of validity and specific limitations.
+                    - CRITICAL: Plain text only. No asterisks (**), no bolding.
+
                     FULL TEXT: {text}
                     """
                     
@@ -172,7 +114,7 @@ if check_password():
                     def ext(label, next_l=None):
                         p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
                         m = re.search(p, res, re.DOTALL | re.IGNORECASE)
-                        return m.group(1).strip() if m else "Pending..."
+                        return m.group(1).strip() if m else "Depth insufficient in source text"
 
                     st.session_state.master_data.append({
                         "#": len(st.session_state.master_data) + 1,
@@ -197,8 +139,7 @@ if check_password():
             with t1:
                 for r in reversed(st.session_state.master_data):
                     with st.container(border=True):
-                        cr, ct = st.columns([1, 12]); cr.metric("REF", r['#']); ct.subheader(r['Title'])
-                        st.markdown(f"<p style='color:#9A1BBE; margin-bottom:0;'>{r['Authors']} ({r['Year']})</p>", unsafe_allow_html=True)
+                        cr, ct = st.columns([1, 12]); cr.metric("Ref", r['#']); ct.subheader(r['Title'])
                         st.divider()
                         sec = [("Summary", r["Summary"]), ("📖 Background", r["Background"]), ("⚙️ Methodology", r["Methodology"]), ("📍 Context", r["Context"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]
                         for k, v in sec:
@@ -209,32 +150,38 @@ if check_password():
             
             with t3:
                 if llm:
-                    f_list = [f"Paper {r['#']}: {r['Findings']}" for r in st.session_state.master_data]
-                    with st.spinner("Synthesizing..."):
-                        synth_prompt = f"Meta-synthesis (No asterisks, use labels [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS]):\n\n" + " / ".join(f_list)
+                    f_list = [f"Paper {r['#']} ({r['Title']}): {r['Findings']}" for r in st.session_state.master_data]
+                    with st.spinner("Buddy is generating your synthesis..."):
+                        synth_prompt = f"""
+                        Perform a PhD-level meta-synthesis of these findings. 
+                        Use these EXACT labels: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS].
+                        Plain text only. No asterisks (**).
+                        
+                        Data: {" / ".join(f_list)}
+                        """
                         raw_synth = llm.invoke([HumanMessage(content=synth_prompt)]).content
                         clean_synth = re.sub(r'\*', '', raw_synth)
 
                         def get_synth(label, next_l=None):
                             p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
                             m = re.search(p, clean_synth, re.DOTALL | re.IGNORECASE)
-                            return m.group(1).strip() if m else "No data."
+                            return m.group(1).strip() if m else "Synthesis detail not found."
 
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            with st.container(border=True):
-                                st.markdown("### 🎯 Overview")
-                                st.write(get_synth("OVERVIEW", "PATTERNS"))
-                            with st.container(border=True):
-                                st.markdown("### ⚖️ Conflicts")
-                                st.write(get_synth("CONTRADICTIONS", "FUTURE_DIRECTIONS"))
-                        with col2:
-                            with st.container(border=True):
-                                st.markdown("### 📈 Patterns")
-                                st.write(get_synth("PATTERNS", "CONTRADICTIONS"))
-                            with st.container(border=True):
-                                st.markdown("### 🚀 Next Steps")
-                                st.write(get_synth("FUTURE_DIRECTIONS"))
+                        with st.container(border=True):
+                            st.markdown("### 🎯 Executive Overview")
+                            st.write(get_synth("OVERVIEW", "PATTERNS"))
+                        
+                        with st.container(border=True):
+                            st.markdown("### 📈 Cross-Study Patterns")
+                            st.write(get_synth("PATTERNS", "CONTRADICTIONS"))
+                        
+                        with st.container(border=True):
+                            st.markdown("### ⚖️ Conflicts & Contradictions")
+                            st.write(get_synth("CONTRADICTIONS", "FUTURE_DIRECTIONS"))
+                        
+                        with st.container(border=True):
+                            st.markdown("### 🚀 Future Research Directions")
+                            st.write(get_synth("FUTURE_DIRECTIONS"))
             
             st.divider()
             if st.button("🗑️ Clear Buddy's Memory", type="secondary"):
