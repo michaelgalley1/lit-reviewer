@@ -8,24 +8,36 @@ import re
 # 1. PAGE CONFIGURATION
 st.set_page_config(page_title="PhD Research Extractor", layout="wide")
 
-# 2. STYLING (CSS)
+# --- 2. STYLING (CSS) ---
 st.markdown("""
     <style>
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
+    
+    /* Sticky Header Styling */
     .sticky-wrapper {
         position: fixed; top: 0; left: 0; width: 100%;
         background-color: white; z-index: 1000;
-        padding: 40px 50px 10px 50px; border-bottom: 2px solid #f0f2f6;
+        padding: 20px 50px 0px 50px; /* Reduced top/bottom padding */
+        border-bottom: 2px solid #f0f2f6;
     }
-    .main-content { margin-top: 90px; }
+    
+    /* Content Margin - This controls the space above the uploader */
+    .main-content { 
+        margin-top: 50px; /* Reduced from 90px to move everything up */
+    }
+
     [data-testid="stFileUploaderContainer"] section { padding: 0px !important; width: 100% !important; }
+    
+    /* Tighten up the spacing between elements */
+    .stAppViewBlockContainer {
+        padding-top: 2rem !important;
+    }
+    
     div.stButton > button:first-child {
         width: 100% !important; color: #28a745 !important;
         border: 2px solid #28a745 !important; font-weight: bold !important;
-        margin-top: 15px; background-color: transparent !important;
+        margin-top: 10px; background-color: transparent !important;
     }
-    .section-title { font-weight: bold; color: #1f77b4; margin-top: 25px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
-    .section-content { display: block; margin-bottom: 20px; line-height: 1.7; color: #333; }
     </style>
     """, unsafe_allow_html=True)
 
