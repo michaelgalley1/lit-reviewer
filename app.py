@@ -13,24 +13,14 @@ st.set_page_config(page_title="PhD Research Extractor", layout="wide")
 st.markdown("""
     <style>
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
-    
     .sticky-wrapper {
         position: fixed; top: 0; left: 0; width: 100%;
         background-color: white; z-index: 1000;
-        padding: 10px 50px 0px 50px;
-        border-bottom: 2px solid #f0f2f6;
+        padding: 10px 50px 0px 50px; border-bottom: 2px solid #f0f2f6;
     }
-    
-    .main-content { 
-        margin-top: -75px; /* Maximum pull-up */
-    }
-
-    .block-container {
-        padding-top: 0rem !important;
-    }
-
+    .main-content { margin-top: -75px; }
+    .block-container { padding-top: 0rem !important; }
     [data-testid="stFileUploader"] { padding-top: 0px !important; }
-    
     div.stButton > button:first-child {
         width: 100% !important; color: #28a745 !important;
         border: 2px solid #28a745 !important; font-weight: bold !important;
@@ -63,7 +53,7 @@ if check_password():
     if 'master_data' not in st.session_state: st.session_state.master_data = [] 
     if 'processed_filenames' not in st.session_state: st.session_state.processed_filenames = set() 
 
-    st.markdown('<div class="sticky-wrapper"><h1 style="margin:0; font-size: 1.8rem;">🎓 PhD Research Extractor</h1><p style="color:gray; margin-bottom:5px;">Gemini 2.0 Flash Analysis</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="sticky-wrapper"><h1 style="margin:0; font-size: 1.8rem;">🎓 PhD Research Extractor</h1><p style="color:gray; margin-bottom:5px;">Advanced Academic Review Mode</p></div>', unsafe_allow_html=True)
 
     with st.container():
         st.write("##") 
@@ -74,7 +64,7 @@ if check_password():
             llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
 
         uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
-        run_review = st.button("🔬 Execute Full-Text Review", use_container_width=True)
+        run_review = st.button("🔬 Execute High-Level Synthesis", use_container_width=True)
 
         if uploaded_files and llm and run_review:
             progress_text = st.empty()
@@ -86,27 +76,36 @@ if check_password():
                         progress_text.text(f"⏳ API Cool-down... {s}s")
                         time.sleep(1)
 
-                progress_text.text(f"📖 Analyzing: {file.name}...")
+                progress_text.text(f"📖 Deep-Reading: {file.name}...")
                 try:
                     reader = PdfReader(file) 
                     text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
                     
+                    # ENHANCED PHD PROMPT
                     prompt = f"""
-                    Extract research data using ONLY these exact labels: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
-                    
-                    CRITICAL: Do NOT use any bolding or asterisks. Use plain text only.
-                    Analyze: {text[:30000]}
+                    You are an expert senior academic researcher and peer reviewer. 
+                    Analyze the provided text with extreme rigor, focusing on theoretical contributions, methodological nuances, and statistical validity.
+
+                    REQUIRED FORMAT:
+                    Use ONLY these exact labels: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
+
+                    INSTRUCTIONS FOR CONTENT QUALITY:
+                    - [SUMMARY]: Provide a dense 3-4 sentence overview of the core thesis and contribution.
+                    - [METHODOLOGY]: Detail the specific research design, sample characteristics (N=), variables, and statistical/qualitative tools used.
+                    - [FINDINGS]: Do not just list results; explain the implications of the primary data and any p-values or effect sizes mentioned.
+                    - [RELIABILITY]: Critically assess limitations, potential biases, or gaps in the study's logic.
+                    - CRITICAL: Do NOT use any bolding or asterisks (**). Use plain text only.
+
+                    Text to analyze: {text[:40000]}
                     """
                     
                     res = llm.invoke([HumanMessage(content=prompt)]).content
-                    
-                    # POWERFUL CLEANUP: This regex removes all asterisks (*) from the result
-                    res = re.sub(r'\*', '', res)
+                    res = re.sub(r'\*', '', res) # Nuclear option for asterisks
 
                     def ext(label, next_l=None):
                         p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
                         m = re.search(p, res, re.DOTALL | re.IGNORECASE)
-                        return m.group(1).strip() if m else "Not found"
+                        return m.group(1).strip() if m else "Depth insufficient in text"
 
                     st.session_state.master_data.append({
                         "#": len(st.session_state.master_data) + 1,
@@ -139,6 +138,8 @@ if check_password():
                 st.dataframe(pd.DataFrame(st.session_state.master_data), use_container_width=True, hide_index=True)
             with t3:
                 if llm:
-                    f_list = [f"P{r['#']}: {r['Findings']}" for r in st.session_state.master_data]
-                    st.markdown(llm.invoke([HumanMessage(content="PhD Synthesis (Plain Text):\n\n" + "\n\n".join(f_list))]).content)
+                    f_list = [f"Paper {r['#']} ({r['Title']}): {r['Findings']}" for r in st.session_state.master_data]
+                    with st.spinner("Generating Meta-Synthesis..."):
+                        synth_prompt = f"Perform a high-level thematic meta-analysis and synthesis of these findings. Identify cross-study patterns and contradictions in plain text:\n\n" + "\n\n".join(f_list)
+                        st.markdown(llm.invoke([HumanMessage(content=synth_prompt)]).content)
     st.markdown('</div>', unsafe_allow_html=True)
