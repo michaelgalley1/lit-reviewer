@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from pypdf import PdfReader
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.schema import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage  # Updated import path
 import re
 
 st.set_page_config(page_title="PhD Literature Reviewer", layout="wide")
