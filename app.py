@@ -9,7 +9,7 @@ import re
 # 1. PAGE CONFIGURATION
 st.set_page_config(page_title="PhD Research Extractor", layout="wide")
 
-# 2. STYLING (CSS) - FIXED SPACING
+# 2. STYLING (CSS) - RE-WRITTEN TO AVOID SYNTAX ERRORS
 st.markdown("""
     <style>
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
@@ -17,31 +17,29 @@ st.markdown("""
     .sticky-wrapper {
         position: fixed; top: 0; left: 0; width: 100%;
         background-color: white; z-index: 1000;
-        padding: 15px 50px 0px 50px; /* Thinner header padding */
+        padding: 10px 50px 0px 50px;
         border-bottom: 2px solid #f0f2f6;
     }
     
     .main-content { 
-        margin-top: 5px; /* DRASTICALLY reduced to close the gap */
+        margin-top: -30px; /* Pulls content up into the gap */
     }
 
-    /* Remove default Streamlit top padding */
     .block-container {
         padding-top: 1rem !important;
     }
 
-    [data-testid="stFileUploaderContainer"] section { padding: 0px !important; width: 100% !important; }
+    [data-testid="stFileUploaderContainer"] section { padding: 0px !important; }
     
     div.stButton > button:first-child {
         width: 100% !important; color: #28a745 !important;
         border: 2px solid #28a745 !important; font-weight: bold !important;
-        margin-top: 5px; background-color: transparent !important;
+        background-color: transparent !important;
     }
-    .section-title { font-weight: bold; color: #1f77b4; margin-top: 20px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
-    .section-content { display: block; margin-bottom: 15px; line-height: 1.7; color: #333; }
+    .section-title { font-weight: bold; color: #1f77b4; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
+    .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
     </style>
-    """
-
+    """, unsafe_allow_html=True
 # 3. AUTHENTICATION LOGIC (SECRETS)
 def check_password():
     """Returns True if the user had the correct password."""
