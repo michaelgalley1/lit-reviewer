@@ -19,7 +19,7 @@ st.markdown("""
         --buddy-blue: #0000FF;
     }
 
-    /* THE NUCLEAR OPTION: Remove red outline on ALL input states */
+    /* Remove red outline/glow on all input states */
     [data-testid="stTextInput"] div[data-baseweb="input"] {
         border: 1px solid #d3d3d3 !important;
     }
@@ -41,16 +41,9 @@ st.markdown("""
         border-bottom: 2px solid #f0f2f6;
     }
     
-    .main-content { 
-        margin-top: -75px; 
-    }
+    .main-content { margin-top: -75px; }
+    .block-container { padding-top: 0rem !important; }
 
-    .block-container {
-        padding-top: 0rem !important;
-    }
-
-    [data-testid="stFileUploader"] { padding-top: 0px !important; }
-    
     div.stButton > button:first-child {
         width: 100% !important; 
         color: var(--buddy-green) !important;
@@ -73,12 +66,9 @@ st.markdown("""
 def check_password():
     correct_password = st.secrets.get("APP_PASSWORD")
     if "password_correct" not in st.session_state:
-        # HEADER UPDATED TO MATCH MAIN PAGE
         st.markdown('<h1 style="margin:0; font-size: 1.8rem; color:#0000FF;">📚 Literature Review Buddy</h1>', unsafe_allow_html=True)
         st.markdown('<p style="color:#18A48C; font-weight: bold; margin-bottom:20px;">Your PhD-Level Research Assistant</p>', unsafe_allow_html=True)
-        
         pwd = st.text_input("Enter password to unlock Literature Review Buddy", type="password")
-        
         if st.button("Unlock Tool"):
             if pwd == correct_password:
                 st.session_state["password_correct"] = True
@@ -95,7 +85,6 @@ if check_password():
     if 'master_data' not in st.session_state: st.session_state.master_data = [] 
     if 'processed_filenames' not in st.session_state: st.session_state.processed_filenames = set() 
 
-    # STICKY HEADER
     st.markdown(f'''
         <div class="sticky-wrapper">
             <h1 style="margin:0; font-size: 1.8rem; color:#0000FF;">📚 Literature Review Buddy</h1>
@@ -119,21 +108,25 @@ if check_password():
             for i, file in enumerate(uploaded_files):
                 if file.name in st.session_state.processed_filenames: continue
                 
-                if i > 0:
-                    for s in range(5, 0, -1):
-                        progress_text.text(f"⏳ API Cool-down... {s}s")
-                        time.sleep(1)
-
-                progress_text.text(f"📖 Buddy is reading: {file.name}...")
+                progress_text.text(f"📖 Critically reviewing: {file.name}...")
                 try:
                     reader = PdfReader(file) 
                     text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
                     
+                    # RIGOUR FIX: Instruction to use sophisticated academic prose and avoid list-heavy comma usage.
                     prompt = f"""
-                    PhD Critique: Analyze the ATTACHED FULL TEXT with extreme rigor.
-                    Format: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
-                    CRITICAL: Plain text only. No asterisks (**), no bolding.
-                    FULL TEXT: {text}
+                    You are a PhD Candidate performing a Systematic Literature Review. Analyze the provided text with extreme academic rigour.
+                    Avoid excessive use of commas; provide fluid, sophisticated academic prose.
+                    
+                    Structure your response using ONLY these labels:
+                    [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
+
+                    Critical requirements:
+                    - [METHODOLOGY]: Critique the epistemological approach, sampling strategy, and statistical validity.
+                    - [RELIABILITY]: Discuss internal/external validity and potential biases.
+                    - No bolding (**). No lists. No bullet points.
+
+                    FULL TEXT: {text[:30000]} 
                     """
                     
                     res = llm.invoke([HumanMessage(content=prompt)]).content
@@ -142,7 +135,7 @@ if check_password():
                     def ext(label, next_l=None):
                         p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
                         m = re.search(p, res, re.DOTALL | re.IGNORECASE)
-                        return m.group(1).strip() if m else "Depth insufficient"
+                        return m.group(1).strip() if m else "Information not present in source text."
 
                     st.session_state.master_data.append({
                         "#": len(st.session_state.master_data) + 1,
@@ -177,26 +170,47 @@ if check_password():
                 st.dataframe(pd.DataFrame(st.session_state.master_data), use_container_width=True, hide_index=True)
             
             with t3:
-                if llm:
-                    f_list = [f"Paper {r['#']}: {r['Findings']}" for r in st.session_state.master_data]
-                    with st.spinner("Buddy is thinking..."):
-                        synth_prompt = f"Perform a PhD-level meta-synthesis: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS]. No asterisks.\nData: {' / '.join(f_list)}"
+                # SYNTHESIS FIX: Explicitly feeding the "Findings" and "Methodology" into the synthesis engine.
+                if len(st.session_state.master_data) > 0:
+                    with st.spinner("Buddy is performing a meta-synthesis of your current library..."):
+                        # Build the evidence base
+                        evidence_base = ""
+                        for r in st.session_state.master_data:
+                            evidence_base += f"Paper {r['#']} ({r['Year']}): Findings: {r['Findings']}. Methodology: {r['Methodology']}\n\n"
+
+                        synth_prompt = f"""
+                        Perform a meta-synthesis across the following academic findings. 
+                        Your output must be a sophisticated, integrative narrative. 
+                        Use ONLY these labels: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS].
+
+                        Evidence Base:
+                        {evidence_base}
+
+                        Requirements:
+                        - [OVERVIEW]: Synthesize the collective theoretical contribution.
+                        - [PATTERNS]: Identify thematic or methodological trends.
+                        - [CONTRADICTIONS]: Highlight conflicting results or theoretical gaps.
+                        - Do not use bullet points or bold text (**). Use complex academic prose.
+                        """
+                        
                         raw_synth = llm.invoke([HumanMessage(content=synth_prompt)]).content
                         clean_synth = re.sub(r'\*', '', raw_synth)
 
                         def get_synth(label, next_l=None):
                             p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
                             m = re.search(p, clean_synth, re.DOTALL | re.IGNORECASE)
-                            return m.group(1).strip() if m else "Detail not found."
+                            return m.group(1).strip() if m else "Synthesis currently unavailable for this metric."
 
                         with st.container(border=True):
                             st.markdown("### 🎯 Executive Overview"); st.write(get_synth("OVERVIEW", "PATTERNS"))
                         with st.container(border=True):
                             st.markdown("### 📈 Cross-Study Patterns"); st.write(get_synth("PATTERNS", "CONTRADICTIONS"))
                         with st.container(border=True):
-                            st.markdown("### ⚖️ Conflicts"); st.write(get_synth("CONTRADICTIONS", "FUTURE_DIRECTIONS"))
+                            st.markdown("### ⚖️ Conflicts & Contradictions"); st.write(get_synth("CONTRADICTIONS", "FUTURE_DIRECTIONS"))
                         with st.container(border=True):
-                            st.markdown("### 🚀 Future Research"); st.write(get_synth("FUTURE_DIRECTIONS"))
+                            st.markdown("### 🚀 Future Research Directions"); st.write(get_synth("FUTURE_DIRECTIONS"))
+                else:
+                    st.info("Upload and analyse papers to generate a synthesis.")
             
             st.divider()
             if st.button("🗑️ Clear Buddy's Memory", type="secondary"):
