@@ -143,9 +143,41 @@ if check_password():
             with t2:
                 st.dataframe(pd.DataFrame(st.session_state.master_data), use_container_width=True, hide_index=True)
             with t3:
+                with t3:
                 if llm:
                     f_list = [f"Paper {r['#']} ({r['Title']}): {r['Findings']}" for r in st.session_state.master_data]
                     with st.spinner("Generating Meta-Synthesis..."):
-                        synth_prompt = "Perform a high-level thematic meta-analysis and synthesis of these findings. Identify cross-study patterns and contradictions in plain text:\n\n" + "\n\n".join(f_list)
-                        st.markdown(llm.invoke([HumanMessage(content=synth_prompt)]).content)
+                        # Structured prompt for a boxed layout
+                        synth_prompt = f"""
+                        Perform a PhD-level meta-synthesis of these findings. 
+                        Provide the response using these EXACT labels: 
+                        [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS].
+                        Use plain text only. No asterisks (**).
+                        
+                        Data: {" / ".join(f_list)}
+                        """
+                        raw_synth = llm.invoke([HumanMessage(content=synth_prompt)]).content
+                        clean_synth = re.sub(r'\*', '', raw_synth)
+
+                        def get_synth(label, next_l=None):
+                            p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
+                            m = re.search(p, clean_synth, re.DOTALL | re.IGNORECASE)
+                            return m.group(1).strip() if m else "Synthesis detail not found."
+
+                        # Visual Boxes
+                        with st.container(border=True):
+                            st.markdown("### 🎯 Executive Overview")
+                            st.write(get_synth("OVERVIEW", "PATTERNS"))
+                        
+                        with st.container(border=True):
+                            st.markdown("### 📈 Cross-Study Patterns")
+                            st.write(get_synth("PATTERNS", "CONTRADICTIONS"))
+                        
+                        with st.container(border=True):
+                            st.markdown("### ⚖️ Conflicts & Contradictions")
+                            st.write(get_synth("CONTRADICTIONS", "FUTURE_DIRECTIONS"))
+                        
+                        with st.container(border=True):
+                            st.markdown("### 🚀 Future Research Directions")
+                            st.write(get_synth("FUTURE_DIRECTIONS"))
     st.markdown('</div>', unsafe_allow_html=True)
