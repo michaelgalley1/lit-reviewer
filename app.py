@@ -37,33 +37,31 @@ st.markdown("""
         --buddy-blue: #0000FF;
     }
 
-    /* REMOVE DEFAULT STREAMLIT PADDING */
+    /* 1. GLOBAL SPACING FIXES */
     [data-testid="block-container"] {
         padding-top: 0rem !important;
-        margin-top: 0rem !important;
         padding-bottom: 0rem !important;
+        margin-top: 0rem !important;
     }
 
-    /* STICKY HEADER - Compact */
+    /* 2. HEADER - TIGHT & CLEAN */
     .sticky-wrapper {
         position: fixed; top: 0; left: 0; width: 100%;
         background-color: white; z-index: 1000;
-        padding: 10px 50px 10px 50px;
+        padding: 10px 50px 10px 50px; 
         border-bottom: 2px solid #f0f2f6;
+        height: auto;
     }
     
-    /* Force Headers to have NO margin for tight stacking */
-    .sticky-wrapper h1, .sticky-wrapper p {
-        margin-bottom: 0px !important;
-        margin-top: 0px !important;
-        line-height: 1.2 !important;
-        padding-bottom: 0px !important;
+    /* Pull Main Content UP to meet the header */
+    .main-content { margin-top: 90px; } 
+
+    /* 3. SIDEBAR - ZERO GAP */
+    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
+        gap: 0rem !important;
     }
-
-    /* Main Content - Pulled up to reduce gap */
-    .main-content { margin-top: 80px; } 
-
-    /* UNIFIED BUTTON STYLING */
+    
+    /* 4. BUTTONS & UI ELEMENTS */
     div.stButton > button:first-child, div.stDownloadButton > button:first-child {
         width: 100% !important; 
         color: var(--buddy-green) !important;
@@ -80,7 +78,7 @@ st.markdown("""
         color: white !important;
     }
 
-    /* Sidebar Delete Button Styling */
+    /* Sidebar Delete Button */
     .del-btn > div > button {
         border: none !important;
         color: #ff4b4b !important;
@@ -93,28 +91,23 @@ st.markdown("""
         background: #ff4b4b !important;
     }
     
-    /* Sidebar Spacing - Tight */
-    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
-        gap: 0rem !important;
-    }
-    
-    /* Save Button Styling (Minimal & Tight) */
+    /* Save Button (In Header) - Subtle */
     .save-btn-container {
         display: flex;
         justify-content: flex-end;
-        margin-bottom: -10px; /* Pulls tabs closer */
+        align-items: center;
+        height: 100%;
     }
     .save-btn-container button {
         border: none !important;
         font-size: 1.5rem !important;
         padding: 0px !important;
         background: transparent !important;
-        line-height: 1;
-        min-height: 0px !important;
+        margin-top: 5px; 
     }
     .save-btn-container button:hover {
-        background: transparent !important;
         transform: scale(1.1);
+        background: transparent !important;
     }
 
     .section-title { font-weight: bold; color: #0000FF; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
@@ -159,11 +152,10 @@ if check_password():
 
     if 'processed_filenames' not in st.session_state: st.session_state.processed_filenames = set() 
 
-    # --- SIDEBAR: PROJECT MANAGER ---
+    # --- SIDEBAR ---
     with st.sidebar:
         st.title("🗂️ Project Manager")
         
-        # Create New Project (Full Width)
         new_proj_name = st.text_input("New Project Name", placeholder="e.g. AI Ethics 2026")
         if st.button("➕ Create Project", use_container_width=True):
             if new_proj_name and new_proj_name not in st.session_state.projects:
@@ -175,18 +167,15 @@ if check_password():
         st.divider()
         st.subheader("Your Projects")
         
-        # Project Button List
         for proj in list(st.session_state.projects.keys()):
             cols = st.columns([5, 1])
             is_active = (proj == st.session_state.active_project)
             label = f"📍 {proj}" if is_active else proj
             
-            # Switch Project
             if cols[0].button(label, key=f"sel_{proj}", use_container_width=True, type="primary" if is_active else "secondary"):
                 st.session_state.active_project = proj
                 st.rerun()
             
-            # Delete Project
             if len(st.session_state.projects) > 1:
                 with cols[1]:
                     st.markdown('<div class="del-btn">', unsafe_allow_html=True)
@@ -198,12 +187,25 @@ if check_password():
                         st.rerun()
                     st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- MAIN PAGE HEADER ---
+    # --- HEADER (With Save Button Integrated) ---
     st.markdown('<div class="sticky-wrapper">', unsafe_allow_html=True)
-    st.markdown(f'''
-        <h1 style="margin:0; font-size: 1.8rem; color:#0000FF; padding-bottom: 0px;">📚 Literature Review Buddy</h1>
-        <p style="color:#18A48C; margin:0; font-weight: bold; padding-top: 0px;">Active Project: {st.session_state.active_project}</p>
-    ''', unsafe_allow_html=True)
+    # Use columns to align Title (Left) and Save (Right)
+    h_col1, h_col2 = st.columns([8, 1])
+    
+    with h_col1:
+        st.markdown(f'''
+            <h1 style="margin:0; font-size: 1.8rem; color:#0000FF; line-height:1.2;">📚 Literature Review Buddy</h1>
+            <p style="color:#18A48C; margin:0; font-weight: bold; font-size: 0.95rem;">Active Project: {st.session_state.active_project}</p>
+        ''', unsafe_allow_html=True)
+        
+    with h_col2:
+        st.markdown('<div class="save-btn-container">', unsafe_allow_html=True)
+        # Just the emoji, no text, subtle save button
+        if st.button("💾", help="Save Progress"):
+            save_data(st.session_state.projects)
+            st.toast("Project saved!", icon="✅")
+        st.markdown('</div>', unsafe_allow_html=True)
+        
     st.markdown('</div>', unsafe_allow_html=True)
 
     # --- MAIN CONTENT ---
@@ -214,7 +216,8 @@ if check_password():
         if api_key:
             llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
 
-        # --- UPLOAD SECTION (Expander) ---
+        # --- UPLOAD SECTION ---
+        # No extra spacers above or below
         with st.expander("Upload and Analyse Papers", expanded=True):
             uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
             run_review = st.button("🔬 Analyse paper", use_container_width=True)
@@ -275,17 +278,7 @@ if check_password():
         active_data = st.session_state.projects[st.session_state.active_project]
 
         if active_data:
-            # Removed the big spacer here
-            
-            # --- SAVE BUTTON (Right Aligned) ---
-            col_spacer, col_save = st.columns([10, 1])
-            with col_save:
-                st.markdown('<div class="save-btn-container">', unsafe_allow_html=True)
-                if st.button("💾", help="Save Progress"):
-                    save_data(st.session_state.projects)
-                    st.toast("Project saved!", icon="✅")
-                st.markdown('</div>', unsafe_allow_html=True)
-
+            # TABS START IMMEDIATELY AFTER UPLOAD BOX (No Save button row here to cause gaps)
             t1, t2, t3 = st.tabs(["🖼️ Card Gallery", "📊 Master Table", "🧠 Synthesis"])
             
             with t1:
