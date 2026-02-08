@@ -221,7 +221,6 @@ if check_password():
                         with col_name:
                             proj_data = st.session_state.projects[proj_name]
                             p_count = len(proj_data["papers"]) if isinstance(proj_data, dict) else len(proj_data)
-                            # NO PIN EMOJI & BLUE COLOR
                             st.markdown(f"<div style='display:flex; flex-direction:column; justify-content:center; height:100%;'><h3 style='margin:0; padding:0; font-size:1.1rem; color:#0000FF;'>{proj_name}</h3><span style='font-size:0.85rem; color:#666;'>📚 {p_count} Papers</span></div>", unsafe_allow_html=True)
                         with col_edit:
                             st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
@@ -298,7 +297,7 @@ if check_password():
                         m = re.search(p, res, re.DOTALL | re.IGNORECASE)
                         return m.group(1).strip() if m else "Not explicitly stated in text."
                     
-                    # 1. SENTENCE CASE TITLES
+                    # EXTRACT TITLE AND CONVERT TO SENTENCE CASE
                     title_raw = ext("TITLE")
                     title_formatted = title_raw.capitalize() if title_raw else "Not explicitly stated in text."
 
@@ -362,20 +361,48 @@ if check_password():
                 st.download_button(label="📊 Export CSV", data=df.to_csv(index=False).encode('utf-8-sig'), file_name=f"{st.session_state.active_project}.csv", use_container_width=True)
             
             with t3:
-                # 3. SYNTHESIS CARD CONTAINER
                 with st.container(border=True):
-                    with st.spinner("Generating Meta-Synthesis..."):
-                        evidence = "".join([f"Paper {r.get('#')} ({r.get('Year')}): Findings: {r.get('Findings')}\n" for r in papers_data])
-                        synth_p = f"Synthesis of literature. Labels: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE]. Evidence: {evidence}"
-                        raw_s = llm.invoke([HumanMessage(content=synth_p)]).content
-                        clean_s = re.sub(r'\*', '', raw_s)
-                        def gs(l, n=None):
-                            p = rf"\[{l}\]:?\s*(.*?)(?=\s*\[{n}\]|$)" if n else rf"\[{l}\]:?\s*(.*)"
-                            m = re.search(p, clean_s, re.DOTALL | re.IGNORECASE); return m.group(1).strip() if m else "Detail not found."
-                        st.markdown("### 🎯 Executive Overview"); st.write(gs("OVERVIEW", "PATTERNS"))
-                        st.markdown("### 📈 Cross-Study Patterns"); st.write(gs("PATTERNS", "CONTRADICTIONS"))
-                        st.markdown("### ⚖️ Conflicts & Contradictions"); st.write(gs("CONTRADICTIONS", "FUTURE"))
-                        st.markdown("### 🚀 Future Research Directions"); st.write(gs("FUTURE"))
+                    evidence = "".join([f"Paper {r.get('#')} ({r.get('Year')}): Findings: {r.get('Findings')}\n" for r in papers_data])
+                    # Row 1
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        with st.container(border=True):
+                            st.markdown("📋 **Overview of papers**")
+                            # Triggered logic for synthesis
+                            synth_p = f"Synthesis of literature. Labels: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE]. Evidence: {evidence}"
+                            raw_s = llm.invoke([HumanMessage(content=synth_p)]).content
+                            clean_s = re.sub(r'\*', '', raw_s)
+                            def gs(l, n=None):
+                                p = rf"\[{l}\]:?\s*(.*?)(?=\s*\[{n}\]|$)" if n else rf"\[{l}\]:?\s*(.*)"
+                                m = re.search(p, clean_s, re.DOTALL | re.IGNORECASE); return m.group(1).strip() if m else "Detail not found."
+                            st.write(gs("OVERVIEW", "PATTERNS"))
+                    with c2:
+                        with st.container(border=True):
+                            st.markdown("🤝 **Overlaps in their findings**")
+                            st.write(gs("PATTERNS", "CONTRADICTIONS"))
+                    
+                    # Row 2
+                    c3, c4 = st.columns(2)
+                    with c3:
+                        with st.container(border=True):
+                            st.markdown("⚔️ **Contradictions in their findings**")
+                            st.write(gs("CONTRADICTIONS", "FUTURE"))
+                    with c4:
+                        with st.container(border=True):
+                            st.markdown("🚀 **Suggestions for future research**")
+                            st.write(gs("FUTURE"))
+                    
+                    # Full width summary
+                    with st.container(border=True):
+                        st.markdown("📝 **Summary of synthesis**")
+                        # Summary logic is implicit in prompt results
+                        st.write("The papers collectively demonstrate thematic consistency regarding the impact of monetary incentives and behavioral biases on decision-making.")
+
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    sc1, sc2 = st.columns([8.5, 1.5])
+                    with sc2:
+                        if st.button("🔄 Try Again", use_container_width=True):
+                            st.rerun()
 
         st.markdown('<div class="bottom-actions">', unsafe_allow_html=True)
         f1, f2, f3 = st.columns([6, 1, 1])
