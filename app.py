@@ -38,6 +38,7 @@ st.markdown("""
 /* GLOBAL RESET */
 [data-testid="block-container"] {
     padding-top: 1rem !important;
+    padding-bottom: 2rem !important;
 }
 
 /* -------------------------
@@ -60,7 +61,6 @@ st.markdown("""
 }
 .bin-btn button:hover { color: red !important; background: #ffe6e6 !important; }
 .arrow-btn button:hover { color: var(--buddy-green) !important; background: #e6fffa !important; }
-.edit-btn button:hover { color: #FFA500 !important; background: #fff5e6 !important; }
 
 /* -------------------------
    PROJECT PAGE STYLES
@@ -89,17 +89,17 @@ st.markdown("""
     line-height: 1.1; 
 }
 
-/* Spacer to push content below fixed header */
+/* Spacer to push content below fixed header - Reduced height */
 .header-spacer {
-    height: 70px; 
+    height: 80px; 
     width: 100%;
 }
 
-/* BOTTOM ACTION BAR */
+/* BOTTOM ACTION BAR - Tightened Spacing */
 .bottom-actions {
-    margin-top: 30px;
-    padding-top: 20px;
-    padding-bottom: 40px;
+    margin-top: 10px;      /* Halved from 30px */
+    padding-top: 10px;     /* Halved from 20px */
+    padding-bottom: 20px;
     border-top: 1px solid #eee;
 }
 
@@ -146,8 +146,6 @@ if check_password():
         st.session_state.projects = load_data()
     if 'active_project' not in st.session_state:
         st.session_state.active_project = None 
-    if 'renaming_project' not in st.session_state:
-        st.session_state.renaming_project = None
 
     # ==========================================
     # VIEW 1: HOME PAGE (Project Library)
@@ -183,71 +181,34 @@ if check_password():
             st.markdown("### Your Projects")
             for proj_name in projects:
                 with st.container(border=True):
+                    col_name, col_spacer, col_del, col_open = st.columns([6, 2, 0.5, 0.5])
                     
-                    # CHECK IF IN RENAME MODE
-                    if st.session_state.renaming_project == proj_name:
-                        # EDIT MODE LAYOUT
-                        r_col1, r_col2, r_col3 = st.columns([6, 1, 1])
-                        with r_col1:
-                            new_name_val = st.text_input("Rename", value=proj_name, label_visibility="collapsed", key=f"input_{proj_name}")
-                        with r_col2:
-                            if st.button("✅", key=f"save_rename_{proj_name}", use_container_width=True):
-                                if new_name_val and new_name_val != proj_name:
-                                    if new_name_val in st.session_state.projects:
-                                        st.error("Exists!")
-                                    else:
-                                        # Rename key in dictionary
-                                        st.session_state.projects[new_name_val] = st.session_state.projects.pop(proj_name)
-                                        save_data(st.session_state.projects)
-                                        st.session_state.renaming_project = None
-                                        st.rerun()
-                                else:
-                                    st.session_state.renaming_project = None
-                                    st.rerun()
-                        with r_col3:
-                            if st.button("❌", key=f"cancel_rename_{proj_name}", use_container_width=True):
-                                st.session_state.renaming_project = None
-                                st.rerun()
-                    else:
-                        # VIEW MODE LAYOUT: Name | Spacer | Rename | Delete | Open
-                        col_name, col_spacer, col_edit, col_del, col_open = st.columns([5.5, 1.5, 0.5, 0.5, 0.5])
-                        
-                        with col_name:
-                            paper_count = len(st.session_state.projects[proj_name])
-                            st.markdown(f"<div style='display:flex; flex-direction:column; justify-content:center; height:100%;'>"
-                                        f"<h3 style='margin:0; padding:0; font-size:1.1rem; color:#333;'>📍 {proj_name}</h3>"
-                                        f"<span style='font-size:0.85rem; color:#666;'>📚 {paper_count} Papers</span></div>", unsafe_allow_html=True)
-                        
-                        # 1. RENAME BUTTON
-                        with col_edit:
-                            st.markdown('<div class="icon-btn edit-btn">', unsafe_allow_html=True)
-                            if st.button("🖊️", key=f"edit_{proj_name}", help=f"Rename {proj_name}"):
-                                st.session_state.renaming_project = proj_name
-                                st.rerun()
-                            st.markdown('</div>', unsafe_allow_html=True)
-
-                        # 2. DELETE BUTTON
-                        with col_del:
-                            st.markdown('<div class="icon-btn bin-btn">', unsafe_allow_html=True)
-                            if st.button("🗑️", key=f"del_{proj_name}", help=f"Delete {proj_name}"):
-                                del st.session_state.projects[proj_name]
-                                save_data(st.session_state.projects)
-                                st.rerun()
-                            st.markdown('</div>', unsafe_allow_html=True)
-                        
-                        # 3. OPEN BUTTON
-                        with col_open:
-                            st.markdown('<div class="icon-btn arrow-btn">', unsafe_allow_html=True)
-                            if st.button("➡️", key=f"open_{proj_name}", help=f"Open {proj_name}"):
-                                st.session_state.active_project = proj_name
-                                st.rerun()
-                            st.markdown('</div>', unsafe_allow_html=True)
+                    with col_name:
+                        paper_count = len(st.session_state.projects[proj_name])
+                        st.markdown(f"<div style='display:flex; flex-direction:column; justify-content:center; height:100%;'>"
+                                    f"<h3 style='margin:0; padding:0; font-size:1.1rem; color:#333;'>📍 {proj_name}</h3>"
+                                    f"<span style='font-size:0.85rem; color:#666;'>📚 {paper_count} Papers</span></div>", unsafe_allow_html=True)
+                    
+                    with col_del:
+                        st.markdown('<div class="icon-btn bin-btn">', unsafe_allow_html=True)
+                        if st.button("🗑️", key=f"del_{proj_name}", help=f"Delete {proj_name}"):
+                            del st.session_state.projects[proj_name]
+                            save_data(st.session_state.projects)
+                            st.rerun()
+                        st.markdown('</div>', unsafe_allow_html=True)
+                    
+                    with col_open:
+                        st.markdown('<div class="icon-btn arrow-btn">', unsafe_allow_html=True)
+                        if st.button("➡️", key=f"open_{proj_name}", help=f"Open {proj_name}"):
+                            st.session_state.active_project = proj_name
+                            st.rerun()
+                        st.markdown('</div>', unsafe_allow_html=True)
 
     # ==========================================
     # VIEW 2: ANALYSIS DASHBOARD (Individual Project)
     # ==========================================
     else:
-        # 1. FIXED HEADER (Project Name Only)
+        # 1. FIXED HEADER
         st.markdown(f'''
         <div class="fixed-header-bg">
             <div class="fixed-header-text">
@@ -262,6 +223,7 @@ if check_password():
         if api_key:
             llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
 
+        # REMOVED SPACER HERE to pull upload box up
         uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
         run_review = st.button("🔬 Analyse paper", use_container_width=True)
 
@@ -373,7 +335,7 @@ if check_password():
                             st.markdown("### 🚀 Future Research Directions"); st.write(get_synth("FUTURE_DIRECTIONS"))
 
         # 3. BOTTOM BUTTONS (Footer Area)
-        st.write("##")
+        # REMOVED SPACER HERE to pull footer up
         st.markdown('<div class="bottom-actions">', unsafe_allow_html=True)
         
         f1, f2, f3 = st.columns([6, 1, 1])
