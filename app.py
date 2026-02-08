@@ -90,8 +90,8 @@ st.markdown("""
 
 .fixed-header-text h1 { margin: 0; font-size: 2rem; color: #0000FF; line-height: 1.1; }
 
-/* Spacer to push content below fixed header */
-.header-spacer { height: 1.5rem; width: 100%; }
+/* Spacer - set to 0.5rem as requested */
+.header-spacer { height: 0.5rem; width: 100%; }
 
 .bottom-actions {
     margin-top: 1rem;      
@@ -348,7 +348,7 @@ if check_password():
         st.markdown('<div class="bottom-actions">', unsafe_allow_html=True)
         f1, f2, f3 = st.columns([6, 1, 1])
         with f2:
-            if st.button("💾 Save Progress", use_container_width=True):
+            if st.button("💾 Save", use_container_width=True): # Name updated
                 save_data(st.session_state.projects); st.toast("Saved!", icon="✅")
         with f3:
             if st.button("🏠 Library", use_container_width=True):
