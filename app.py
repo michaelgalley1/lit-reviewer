@@ -59,13 +59,16 @@ st.markdown("""
         justify-content: center !important;
     }
     
-    /* Force transparency even on hover/focus to hide the "box" */
     .icon-btn > div > button:hover, .icon-btn > div > button:active, .icon-btn > div > button:focus {
         background-color: transparent !important;
         color: inherit !important;
         border: none !important;
         box-shadow: none !important;
     }
+
+    /* Small Adjustments for Rename UI Buttons */
+    .rename-save-btn > div > button { color: white !important; background-color: var(--buddy-green) !important; }
+    .rename-cancel-btn > div > button { color: #666 !important; border: 1px solid #ccc !important; }
 
     .section-title { font-weight: bold; color: #0000FF; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
     .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
@@ -109,7 +112,6 @@ if check_password():
         st.subheader("Your Projects")
         
         for proj in list(st.session_state.projects.keys()):
-            # [Project Button, Edit Pencil, Delete Bin]
             cols = st.columns([4, 1, 1])
             is_active = (proj == st.session_state.active_project)
             label = f"📍 {proj}" if is_active else proj
@@ -118,14 +120,12 @@ if check_password():
                 st.session_state.active_project = proj
                 st.rerun()
             
-            # Pencil Emoji
             with cols[1]:
                 st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
                 if st.button("📝", key=f"edit_btn_{proj}"):
                     st.session_state[f"renaming_{proj}"] = True
                 st.markdown('</div>', unsafe_allow_html=True)
 
-            # Bin Emoji
             with cols[2]:
                 if len(st.session_state.projects) > 1:
                     st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
@@ -137,20 +137,28 @@ if check_password():
                         st.rerun()
                     st.markdown('</div>', unsafe_allow_html=True)
             
-            # Inline Rename UI
+            # --- INLINE RENAME UI ---
             if st.session_state.get(f"renaming_{proj}", False):
                 new_name = st.text_input(f"Rename to:", value=proj, key=f"input_{proj}", label_visibility="collapsed")
-                c1, c2 = st.columns(2)
-                if c1.button("Save", key=f"save_{proj}"):
-                    if new_name and new_name != proj:
-                        st.session_state.projects[new_name] = st.session_state.projects.pop(proj)
-                        if is_active: st.session_state.active_project = new_name
-                        save_data(st.session_state.projects)
-                    st.session_state[f"renaming_{proj}"] = False
-                    st.rerun()
-                if c2.button("Cancel", key=f"cancel_{proj}"):
-                    st.session_state[f"renaming_{proj}"] = False
-                    st.rerun()
+                
+                # Aligning Cancel (Left) and Save (Right)
+                c_left, c_right = st.columns(2)
+                with c_left:
+                    st.markdown('<div class="rename-cancel-btn">', unsafe_allow_html=True)
+                    if st.button("Cancel", key=f"cancel_{proj}"):
+                        st.session_state[f"renaming_{proj}"] = False
+                        st.rerun()
+                    st.markdown('</div>', unsafe_allow_html=True)
+                with c_right:
+                    st.markdown('<div class="rename-save-btn">', unsafe_allow_html=True)
+                    if st.button("Save", key=f"save_{proj}"):
+                        if new_name and new_name != proj:
+                            st.session_state.projects[new_name] = st.session_state.projects.pop(proj)
+                            if is_active: st.session_state.active_project = new_name
+                            save_data(st.session_state.projects)
+                        st.session_state[f"renaming_{proj}"] = False
+                        st.rerun()
+                    st.markdown('</div>', unsafe_allow_html=True)
 
     # --- MAIN UI HEADER ---
     st.markdown('<div class="sticky-wrapper">', unsafe_allow_html=True)
