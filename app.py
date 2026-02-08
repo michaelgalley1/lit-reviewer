@@ -5,8 +5,6 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
 from streamlit_gsheets import GSheetsConnection
 import re
-import json
-import os
 import time
 
 # 1. PAGE CONFIGURATION
@@ -50,13 +48,11 @@ def save_full_library(library):
         new_df = pd.DataFrame(flat_data)
         conn.update(data=new_df)
 
-# 3. STYLING (Restored original visual format)
+# 3. STYLING (Restoring original buttons and card layout)
 st.markdown("""
 <style>
 [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
 :root { --buddy-green: #18A48C; --buddy-blue: #0000FF; }
-[data-testid="block-container"] { padding-top: 0rem !important; }
-[data-testid="stTextInput"] div[data-baseweb="input"] { border: 1px solid #d3d3d3 !important; }
 [data-testid="stTextInput"] div[data-baseweb="input"]:hover { border-color: var(--buddy-green) !important; }
 [data-testid="stTextInput"] div[data-baseweb="input"]:focus-within { border: 2px solid var(--buddy-green) !important; }
 div[data-testid="stButton"] button:hover { background-color: var(--buddy-green) !important; color: white !important; }
@@ -122,6 +118,10 @@ if check_password():
                                 save_full_library(st.session_state.projects)
                                 st.session_state.renaming_project = None
                                 st.rerun()
+                        with r_col3:
+                            if st.button("❌", key=f"can_{proj_name}"):
+                                st.session_state.renaming_project = None
+                                st.rerun()
                     else:
                         col_name, col_spacer, col_edit, col_del, col_open = st.columns([6, 1.5, 0.5, 0.5, 0.5])
                         with col_name:
@@ -153,23 +153,43 @@ if check_password():
         st.markdown(f'<div class="fixed-header-bg"><div class="fixed-header-text"><h1>{st.session_state.active_project}</h1></div></div>', unsafe_allow_html=True)
         st.markdown('<div class="upload-pull-up">', unsafe_allow_html=True)
         llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
-        uploaded_files = st.file_uploader("Upload PDFs", type="pdf", accept_multiple_files=True)
-        if st.button("🔬 Analyse paper", use_container_width=True):
-            if uploaded_files:
-                for file in uploaded_files:
-                    reader = PdfReader(file)
-                    text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
-                    prompt = "Act as Senior Academic Researcher. Extract: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. RULES: Only labels, no bold/bullets. TEXT: " + text[:30000]
-                    res = llm.invoke([HumanMessage(content=prompt)]).content
-                    res = re.sub(r'\*', '', res)
-                    def ext(label):
-                        m = re.search(rf"\[{label}\]\s*:?\s*(.*?)(?=\s*\[|$)", res, re.DOTALL | re.IGNORECASE)
-                        return m.group(1).strip() if m else "Not explicitly stated."
-                    new_paper = {"#": len(st.session_state.projects[st.session_state.active_project]["papers"]) + 1, "Title": ext("TITLE"), "Authors": ext("AUTHORS"), "Year": ext("YEAR"), "Reference": ext("REFERENCE"), "Summary": ext("SUMMARY"), "Background": ext("BACKGROUND"), "Methodology": ext("METHODOLOGY"), "Context": ext("CONTEXT"), "Findings": ext("FINDINGS"), "Reliability": ext("RELIABILITY")}
-                    st.session_state.projects[st.session_state.active_project]["papers"].append(new_paper)
-                save_full_library(st.session_state.projects)
-                st.rerun()
+        uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
+        run_review = st.button("🔬 Analyse paper", use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
+
+        if uploaded_files and run_review:
+            for file in uploaded_files:
+                reader = PdfReader(file)
+                text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
+                
+                # THE SMARTER PHD PROMPT
+                prompt = (
+                    "Act as a Senior Academic Researcher and PhD Supervisor specializing in Systematic Literature Reviews. "
+                    "Carefully analyze the text and extract for the following categories:\n\n"
+                    "[TITLE]: The full academic title.\n[AUTHORS]: All primary authors.\n[YEAR]: Year of publication.\n"
+                    "[REFERENCE]: Full Harvard-style citation.\n[SUMMARY]: Concise overview.\n"
+                    "[BACKGROUND]: Gap and framework.\n[METHODOLOGY]: Design, N=, tools.\n[CONTEXT]: Location/population.\n"
+                    "[FINDINGS]: Specific results.\n[RELIABILITY]: Critique limitations.\n\n"
+                    "RULES: Output ONLY bracketed labels. No bolding or bullets. TEXT: " + text[:30000]
+                )
+                
+                res = llm.invoke([HumanMessage(content=prompt)]).content
+                res = re.sub(r'\*', '', res)
+                def ext(label):
+                    m = re.search(rf"\[{label}\]\s*:?\s*(.*?)(?=\s*\[|$)", res, re.DOTALL | re.IGNORECASE)
+                    return m.group(1).strip() if m else "Not explicitly stated."
+                
+                new_paper = {
+                    "#": len(st.session_state.projects[st.session_state.active_project]["papers"]) + 1,
+                    "Title": ext("TITLE"), "Authors": ext("AUTHORS"), "Year": ext("YEAR"), 
+                    "Reference": ext("REFERENCE"), "Summary": ext("SUMMARY"), 
+                    "Background": ext("BACKGROUND"), "Methodology": ext("METHODOLOGY"), 
+                    "Context": ext("CONTEXT"), "Findings": ext("FINDINGS"), 
+                    "Reliability": ext("RELIABILITY")
+                }
+                st.session_state.projects[st.session_state.active_project]["papers"].append(new_paper)
+            save_full_library(st.session_state.projects)
+            st.rerun()
 
         papers_data = st.session_state.projects[st.session_state.active_project]["papers"]
         if papers_data:
@@ -192,7 +212,7 @@ if check_password():
                 st.dataframe(pd.DataFrame(papers_data), use_container_width=True, hide_index=True)
             with t3:
                 evidence = "".join([f"Paper {r.get('#')}: {r.get('Findings')}\n" for r in papers_data])
-                synth_res = llm.invoke([HumanMessage(content=f"Synthesize these findings: {evidence}")]).content
+                synth_res = llm.invoke([HumanMessage(content=f"Synthesize these findings into a high-level academic summary for a PhD review: {evidence}")]).content
                 st.write(synth_res)
 
         st.columns([8, 1])[1].button("🏠 Library", on_click=lambda: setattr(st.session_state, 'active_project', None))
