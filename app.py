@@ -27,56 +27,37 @@ def save_data(data):
     with open(DB_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
-# 3. STYLING - FORCED VERTICAL AND HORIZONTAL ALIGNMENT
+# 3. STYLING
 st.markdown("""
     <style>
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
     :root { --buddy-green: #18A48C; --buddy-blue: #0000FF; }
     
-    /* Sticky Header Logic */
     .sticky-wrapper { position: fixed; top: 0; left: 0; width: 100%; background-color: white; z-index: 1000; padding: 10px 50px 0px 50px; border-bottom: 2px solid #f0f2f6; }
     .main-content { margin-top: -30px; }
     
-    /* Global Sidebar Column Alignment */
-    [data-testid="stSidebar"] [data-testid="column"] {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        height: 45px !important; /* Forces consistent row height */
-    }
-    
-    /* Left-align Project Name Column */
-    [data-testid="stSidebar"] [data-testid="column"]:nth-of-type(1) {
-        justify-content: flex-start !important;
-    }
-
-    /* Right-align the Bin/Save Column */
-    [data-testid="stSidebar"] [data-testid="column"]:nth-of-type(3) {
-        justify-content: flex-end !important;
-    }
-
-    /* Standard Action Buttons (Main UI) */
-    div.stButton > button:first-child {
+    /* Buttons Styling */
+    div.stButton > button:first-child, div.stDownloadButton > button:first-child {
         width: 100% !important; color: var(--buddy-green) !important; border: 1px solid var(--buddy-green) !important; font-weight: bold !important; background-color: transparent !important;
     }
-    div.stButton > button:hover { background-color: var(--buddy-green) !important; color: white !important; }
-
-    /* ICON BUTTONS (Sidebar) */
-    .icon-btn > div > button {
-        border: none !important;
-        background-color: transparent !important;
-        box-shadow: none !important;
-        padding: 0px !important;
-        font-size: 1.4rem !important;
-        height: 40px !important;
-        width: 100% !important;
-    }
+    div.stButton > button:hover, div.stDownloadButton > button:hover { background-color: var(--buddy-green) !important; color: white !important; }
     
-    .icon-btn > div > button:hover { background-color: transparent !important; }
+    /* Sidebar Tight Spacing & Alignment */
+    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
+        gap: 0.4rem !important; /* Reduces gap between project rows by ~50% */
+    }
 
-    /* Rename Input styling */
-    .stTextInput input {
-        height: 38px !important;
+    .del-btn > div > button {
+        border: none !important;
+        color: #ff4b4b !important;
+        background: transparent !important;
+        padding: 0px !important;
+        line-height: 1 !important;
+        height: 38px !important; /* Matches standard button height for alignment */
+    }
+    .del-btn > div > button:hover {
+        color: #b30000 !important;
+        background: transparent !important;
     }
 
     .section-title { font-weight: bold; color: #0000FF; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
@@ -120,61 +101,25 @@ if check_password():
         st.divider()
         st.subheader("Your Projects")
         
-        # Shared Column Layout Ratio
-        layout_ratio = [5, 1, 1]
-
         for proj in list(st.session_state.projects.keys()):
+            cols = st.columns([5, 1])
             is_active = (proj == st.session_state.active_project)
-            is_renaming = st.session_state.get(f"renaming_{proj}", False)
-
-            if not is_renaming:
-                cols = st.columns(layout_ratio)
-                with cols[0]:
-                    label = f"📍 {proj}" if is_active else proj
-                    if st.button(label, key=f"sel_{proj}", use_container_width=True, type="primary" if is_active else "secondary"):
-                        st.session_state.active_project = proj
-                        st.rerun()
-                
-                with cols[1]:
-                    st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
-                    if st.button("📝", key=f"edit_btn_{proj}"):
-                        st.session_state[f"renaming_{proj}"] = True
-                        st.rerun()
-                    st.markdown('</div>', unsafe_allow_html=True)
-
-                with cols[2]:
-                    if len(st.session_state.projects) > 1:
-                        st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
-                        if st.button("🗑️", key=f"del_{proj}"):
-                            del st.session_state.projects[proj]
-                            if is_active:
-                                st.session_state.active_project = list(st.session_state.projects.keys())[0]
-                            save_data(st.session_state.projects)
-                            st.rerun()
-                        st.markdown('</div>', unsafe_allow_html=True)
+            label = f"📍 {proj}" if is_active else proj
             
-            else:
-                # Rename Mode: Mirrors Project Row Columns
-                new_name = st.text_input(f"Rename", value=proj, key=f"input_{proj}", label_visibility="collapsed")
-                
-                btn_cols = st.columns(layout_ratio)
-                # btn_cols[0] is empty to keep space for the input above
-                
-                with btn_cols[1]: # Aligns with Pencil
-                    st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
-                    if st.button("✖️", key=f"cancel_{proj}", help="Cancel"):
-                        st.session_state[f"renaming_{proj}"] = False
-                        st.rerun()
-                    st.markdown('</div>', unsafe_allow_html=True)
-                
-                with btn_cols[2]: # Aligns with Bin
-                    st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
-                    if st.button("✔️", key=f"save_{proj}", help="Save Name"):
-                        if new_name and new_name != proj:
-                            st.session_state.projects[new_name] = st.session_state.projects.pop(proj)
-                            if is_active: st.session_state.active_project = new_name
-                            save_data(st.session_state.projects)
-                        st.session_state[f"renaming_{proj}"] = False
+            # Project Selection Button
+            if cols[0].button(label, key=f"sel_{proj}", use_container_width=True, type="primary" if is_active else "secondary"):
+                st.session_state.active_project = proj
+                st.rerun()
+            
+            # Delete Button
+            if len(st.session_state.projects) > 1:
+                with cols[1]:
+                    st.markdown('<div class="del-btn">', unsafe_allow_html=True)
+                    if st.button("×", key=f"del_{proj}", help=f"Delete {proj}"):
+                        del st.session_state.projects[proj]
+                        if is_active:
+                            st.session_state.active_project = list(st.session_state.projects.keys())[0]
+                        save_data(st.session_state.projects)
                         st.rerun()
                     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -186,7 +131,7 @@ if check_password():
         st.markdown('<p style="color:#18A48C; margin-bottom:5px; font-weight: bold;">PhD-Level Analysis Mode</p>', unsafe_allow_html=True)
     with head_col2:
         st.write("##") 
-        if st.button("💾 Save Project"):
+        if st.button("💾 Save Progress"):
             save_data(st.session_state.projects)
             st.toast("Project Saved!", icon="✅")
     st.markdown('</div>', unsafe_allow_html=True)
