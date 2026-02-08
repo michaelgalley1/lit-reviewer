@@ -54,18 +54,35 @@ def save_full_library(library):
             st.error(f"⚠️ Storage Error: {e}")
             return False
 
-# 3. STYLING
+# 3. STYLING (Fixed Borders & Hover States)
 st.markdown("""
 <style>
 [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
 :root { --buddy-green: #18A48C; --buddy-blue: #0000FF; }
 [data-testid="block-container"] { padding-top: 0rem !important; }
+
+/* Unified Green Border for all Input Boxes */
+div[data-baseweb="input"], div[data-baseweb="textarea"] {
+    border: 1px solid #18A48C !important;
+}
+
+/* Unified Green Hover/Focus Highlight */
+div[data-baseweb="input"]:hover, div[data-baseweb="textarea"]:hover,
+div[data-baseweb="input"]:focus-within, div[data-baseweb="textarea"]:focus-within {
+    border: 2px solid #18A48C !important;
+    outline: none !important;
+}
+
 .section-title { font-weight: bold; color: #0000FF; margin-top: 1rem; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 0.06rem solid #eee; }
 .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
+
 .fixed-header-bg { position: fixed; top: 0; left: 0; width: 100%; height: 4.5rem; background: white; border-bottom: 0.125rem solid #f0f2f6; z-index: 1000; padding-left: 3.75rem; display: flex; align-items: center; }
 .fixed-header-text h1 { margin: 0; font-size: 2.2rem; color: #0000FF; }
 .upload-pull-up { margin-top: -3.0rem !important; }
-.synth-container { background-color: #f8f9fa; padding: 25px; border-radius: 12px; border-left: 8px solid #0000FF; margin-top: 10px; }
+
+/* Simplified Synthesis Container (No extra bars) */
+.synth-area { padding: 10px 0px; margin-top: 0px; }
+
 .icon-btn div[data-testid="stButton"] button { height: 38px !important; width: 38px !important; padding: 0 !important; border: none !important; background: transparent !important; }
 </style>
 """, unsafe_allow_html=True)
@@ -149,9 +166,28 @@ else:
                 progress_container.info(f"📖 Analysing: {file.name}...")
                 reader = PdfReader(file)
                 text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
-                prompt = "Act as Senior Academic Researcher. Extract: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. RULES: Only labels, no bold/bullets. TEXT: " + text[:30000]
+                
+                # REFINED PROMPT: Increased instruction clarity for better reading
+                prompt = (
+                    "You are a Senior PhD Supervisor. Perform a deep critical analysis of the provided text. "
+                    "Extract precisely the following categories. If a specific section is missing, infer logically from the text or state 'Not explicitly mentioned'.\n\n"
+                    "[TITLE]: The full title.\n"
+                    "[AUTHORS]: Primary authors.\n"
+                    "[YEAR]: Publication year.\n"
+                    "[REFERENCE]: Harvard-style citation.\n"
+                    "[SUMMARY]: 2-sentence overview.\n"
+                    "[BACKGROUND]: The research gap and theory.\n"
+                    "[METHODOLOGY]: Design, N=, and tools.\n"
+                    "[CONTEXT]: Setting and population.\n"
+                    "[FINDINGS]: Core results and significance.\n"
+                    "[RELIABILITY]: Critique of limitations/bias.\n\n"
+                    "FORMATTING: Output ONLY the labels in brackets followed by text. No bolding. No bullet points.\n\n"
+                    "TEXT TO ANALYZE: " + text[:35000]
+                )
+                
                 res = llm.invoke([HumanMessage(content=prompt)]).content
                 res = re.sub(r'\*', '', res)
+                
                 def ext(label):
                     m = re.search(rf"\[{label}\]\s*:?\s*(.*?)(?=\s*\[|$)", res, re.DOTALL | re.IGNORECASE)
                     return m.group(1).strip() if m else "Not explicitly stated."
@@ -163,6 +199,7 @@ else:
                 new_paper = {"#": len(st.session_state.projects[st.session_state.active_project]["papers"]) + 1, "Title": ext_title, "Authors": ext("AUTHORS"), "Year": ext("YEAR"), "Reference": ext("REFERENCE"), "Summary": ext("SUMMARY"), "Background": ext("BACKGROUND"), "Methodology": ext("METHODOLOGY"), "Context": ext("CONTEXT"), "Findings": ext("FINDINGS"), "Reliability": ext("RELIABILITY")}
                 st.session_state.projects[st.session_state.active_project]["papers"].append(new_paper)
                 st.session_state.processed_filenames.add(file.name)
+            
             progress_container.empty()
             save_full_library(st.session_state.projects); st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
@@ -188,7 +225,7 @@ else:
             csv = df.to_csv(index=False).encode('utf-8')
             st.download_button("📥 Export to CSV", data=csv, file_name=f"{st.session_state.active_project}_review.csv", mime='text/csv')
         with t3:
-            st.markdown('<div class="synth-container">', unsafe_allow_html=True)
+            st.markdown('<div class="synth-area">', unsafe_allow_html=True)
             stored_synth = st.session_state.get(f"synth_{st.session_state.active_project}")
             if stored_synth:
                 st.markdown(stored_synth)
@@ -203,10 +240,10 @@ else:
                             "Act as a PhD Supervisor. Synthesize the findings provided. "
                             "Use emojis for each heading and maintain a professional academic tone. "
                             "Structure the response with these EXACT headings:\n\n"
-                            "📋 **Overview of papers**\n"
-                            "🤝 **Overlaps in their findings**\n"
-                            "⚔️ **Contradictions in their findings**\n"
-                            "🚀 **Suggestions for future research**\n"
+                            "📋 **Overview of papers**\n\n"
+                            "🤝 **Overlaps in their findings**\n\n"
+                            "⚔️ **Contradictions in their findings**\n\n"
+                            "🚀 **Suggestions for future research**\n\n"
                             "📝 **Summary of synthesis**\n\n"
                             f"DATA:\n{evidence}"
                         )
