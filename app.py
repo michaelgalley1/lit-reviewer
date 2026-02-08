@@ -44,6 +44,7 @@ st.markdown("""
     --buddy-blue: #0000FF;
 }
 
+/* REMOVE DEFAULT STREAMLIT PADDING */
 [data-testid="block-container"] {
     padding-top: 0rem !important;
     padding-bottom: 2rem !important;
@@ -88,10 +89,12 @@ st.markdown("""
     align-items: center;
 }
 
-.fixed-header-text h1 { margin: 0; font-size: 2rem; color: #0000FF; line-height: 1.1; }
+.fixed-header-text h1 { margin: 0; font-size: 2.2rem; color: #0000FF; line-height: 1.1; }
 
-/* Spacer - set to 0.5rem as requested */
-.header-spacer { height: 0.5rem; width: 100%; }
+/* TARGET THE MAIN CONTENT AREA TO PULL IT UP */
+[data-testid="stVerticalBlock"] > div:nth-child(2) {
+    margin-top: -3.5rem !important; /* This pulls the upload section UP */
+}
 
 .bottom-actions {
     margin-top: 1rem;      
@@ -245,15 +248,16 @@ if check_password():
     # VIEW 2: ANALYSIS DASHBOARD
     # ==========================================
     else:
+        # 1. FIXED HEADER
         st.markdown(f'''
         <div class="fixed-header-bg">
             <div class="fixed-header-text">
                 <h1>{st.session_state.active_project}</h1>
             </div>
         </div>
-        <div class="header-spacer"></div>
         ''', unsafe_allow_html=True)
 
+        # 2. MAIN CONTENT
         llm = None
         if api_key:
             llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
@@ -348,7 +352,7 @@ if check_password():
         st.markdown('<div class="bottom-actions">', unsafe_allow_html=True)
         f1, f2, f3 = st.columns([6, 1, 1])
         with f2:
-            if st.button("💾 Save", use_container_width=True): # Name updated
+            if st.button("💾 Save", use_container_width=True):
                 save_data(st.session_state.projects); st.toast("Saved!", icon="✅")
         with f3:
             if st.button("🏠 Library", use_container_width=True):
