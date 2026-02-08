@@ -90,9 +90,9 @@ st.markdown("""
 
 .fixed-header-text h1 { margin: 0; font-size: 2.2rem; color: #0000FF; line-height: 1.1; }
 
-/* TARGETED UPLOAD SECTION ONLY */
+/* TARGETED UPLOAD SECTION ONLY - SET TO -3.0rem */
 .upload-pull-up {
-    margin-top: -2.0rem !important; /* Pulls ONLY this section up */
+    margin-top: -3.0rem !important; 
     padding-bottom: 1rem;
 }
 
