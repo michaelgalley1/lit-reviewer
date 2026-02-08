@@ -5,6 +5,8 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
 from streamlit_gsheets import GSheetsConnection
 import re
+import json
+import os
 import time
 
 # 1. PAGE CONFIGURATION
@@ -15,22 +17,15 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 def load_full_library():
     try:
-        # ttl=0 ensures we bypass cache to get real-time Google Sheet data
         df = conn.read(ttl=0)
-        
-        # Safety Check: If sheet is empty or headers are missing
         if df is None or df.empty or 'Project' not in df.columns: 
             return {}
-        
         library = {}
         for _, row in df.iterrows():
             proj = row.get('Project')
             if pd.isna(proj) or not proj: continue
-            
             if proj not in library:
                 library[proj] = {"papers": [], "last_accessed": row.get('LastAccessed', 0)}
-            
-            # Add paper if Title exists
             if 'Title' in row and pd.notna(row['Title']):
                 library[proj]["papers"].append({
                     "#": row.get('#'), "Title": row.get('Title'), "Authors": row.get('Authors'),
@@ -39,9 +34,7 @@ def load_full_library():
                     "Context": row.get('Context'), "Findings": row.get('Findings'), "Reliability": row.get('Reliability')
                 })
         return library
-    except Exception as e:
-        # Silent fail returns empty dict so UI can still load
-        return {}
+    except: return {}
 
 def save_full_library(library):
     flat_data = []
@@ -53,27 +46,27 @@ def save_full_library(library):
                 row = {"Project": proj_name, "LastAccessed": content.get("last_accessed", time.time())}
                 row.update(paper)
                 flat_data.append(row)
-    
     if flat_data:
         new_df = pd.DataFrame(flat_data)
         conn.update(data=new_df)
 
-# 3. STYLING
+# 3. STYLING (Restored original visual format)
 st.markdown("""
 <style>
 [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
 :root { --buddy-green: #18A48C; --buddy-blue: #0000FF; }
+[data-testid="block-container"] { padding-top: 0rem !important; }
 [data-testid="stTextInput"] div[data-baseweb="input"] { border: 1px solid #d3d3d3 !important; }
 [data-testid="stTextInput"] div[data-baseweb="input"]:hover { border-color: var(--buddy-green) !important; }
 [data-testid="stTextInput"] div[data-baseweb="input"]:focus-within { border: 2px solid var(--buddy-green) !important; }
 div[data-testid="stButton"] button:hover { background-color: var(--buddy-green) !important; color: white !important; }
-.section-title { font-weight: bold; color: #0000FF; margin-top: 1rem; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 0.06rem solid #eee; }
-.section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
+.icon-btn div[data-testid="stButton"] button { height: 38px !important; width: 38px !important; padding: 0 !important; border: none !important; background: transparent !important; }
+.card-del-container div[data-testid="stButton"] button { color: #ff4b4b !important; border: 1px solid #ff4b4b !important; background: transparent !important; font-size: 0.85rem !important; min-width: 140px !important; }
 .fixed-header-bg { position: fixed; top: 0; left: 0; width: 100%; height: 4.5rem; background: white; border-bottom: 0.125rem solid #f0f2f6; z-index: 1000; padding-left: 3.75rem; display: flex; align-items: center; }
 .fixed-header-text h1 { margin: 0; font-size: 2.2rem; color: #0000FF; }
 .upload-pull-up { margin-top: -3.0rem !important; }
-.card-del-container { display: flex; justify-content: flex-end; width: 100%; margin-top: 1.5rem; }
-.card-del-container div[data-testid="stButton"] button { color: #ff4b4b !important; border: 1px solid #ff4b4b !important; background: transparent !important; font-size: 0.85rem !important; min-width: 140px !important; }
+.section-title { font-weight: bold; color: #0000FF; margin-top: 1rem; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 0.06rem solid #eee; }
+.section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -87,25 +80,24 @@ def check_password():
             if pwd == correct_password:
                 st.session_state["password_correct"] = True
                 st.rerun()
-            else:
-                st.error("🚫 Access Denied")
+            else: st.error("🚫 Access Denied")
         return False
     return True
 
 # 5. MAIN LOGIC
 if check_password():
-    api_key = st.secrets.get("GEMINI_API_KEY", "AIzaSyCs-N57rUlOl1J8LtwT54b6kLgYnAhmuJg")
+    api_key = "AIzaSyCs-N57rUlOl1J8LtwT54b6kLgYnAhmuJg"
 
     if 'projects' not in st.session_state:
         st.session_state.projects = load_full_library()
-    
     if 'active_project' not in st.session_state:
         st.session_state.active_project = None 
+    if 'renaming_project' not in st.session_state:
+        st.session_state.renaming_project = None
 
     if st.session_state.active_project is None:
         # LIBRARY VIEW
         st.markdown('<div><h1 style="color:#0000FF;">🗂️ Project Library</h1><p style="color:#18A48C; font-weight: bold;">Permanent Cloud Storage Active.</p></div>', unsafe_allow_html=True)
-
         with st.container(border=True):
             c1, c2 = st.columns([4, 1])
             new_name = c1.text_input("New Project Name", placeholder="e.g. AI Ethics", label_visibility="collapsed")
@@ -121,110 +113,86 @@ if check_password():
             sorted_projects = sorted(projects, key=lambda k: st.session_state.projects[k].get("last_accessed", 0), reverse=True)
             for proj_name in sorted_projects:
                 with st.container(border=True):
-                    col_name, col_spacer, col_edit, col_del, col_open = st.columns([6, 1.5, 0.5, 0.5, 0.5])
-                    with col_name:
-                        p_count = len(st.session_state.projects[proj_name]["papers"])
-                        st.markdown(f"**📍 {proj_name}** ({p_count} Papers)")
-                    with col_del:
-                        if st.button("🗑️", key=f"del_{proj_name}"):
-                            del st.session_state.projects[proj_name]
-                            save_full_library(st.session_state.projects)
-                            st.rerun()
-                    with col_open:
-                        if st.button("➡️", key=f"open_{proj_name}"):
-                            st.session_state.active_project = proj_name
-                            st.session_state.projects[proj_name]["last_accessed"] = time.time()
-                            save_full_library(st.session_state.projects)
-                            st.rerun()
+                    if st.session_state.renaming_project == proj_name:
+                        r_col1, r_col2, r_col3 = st.columns([6, 1, 1])
+                        with r_col1: new_name_val = st.text_input("Rename", value=proj_name, key=f"in_{proj_name}")
+                        with r_col2: 
+                            if st.button("✅", key=f"sav_{proj_name}"):
+                                st.session_state.projects[new_name_val] = st.session_state.projects.pop(proj_name)
+                                save_full_library(st.session_state.projects)
+                                st.session_state.renaming_project = None
+                                st.rerun()
+                    else:
+                        col_name, col_spacer, col_edit, col_del, col_open = st.columns([6, 1.5, 0.5, 0.5, 0.5])
+                        with col_name:
+                            p_count = len(st.session_state.projects[proj_name]["papers"])
+                            st.markdown(f"**📍 {proj_name}** ({p_count} Papers)")
+                        with col_edit:
+                            st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
+                            if st.button("🖊️", key=f"ed_{proj_name}"):
+                                st.session_state.renaming_project = proj_name
+                                st.rerun()
+                            st.markdown('</div>', unsafe_allow_html=True)
+                        with col_del:
+                            st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
+                            if st.button("🗑️", key=f"dl_{proj_name}"):
+                                del st.session_state.projects[proj_name]
+                                save_full_library(st.session_state.projects)
+                                st.rerun()
+                            st.markdown('</div>', unsafe_allow_html=True)
+                        with col_open:
+                            st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
+                            if st.button("➡️", key=f"op_{proj_name}"):
+                                st.session_state.active_project = proj_name
+                                st.session_state.projects[proj_name]["last_accessed"] = time.time()
+                                save_full_library(st.session_state.projects)
+                                st.rerun()
+                            st.markdown('</div>', unsafe_allow_html=True)
     else:
         # PROJECT VIEW
         st.markdown(f'<div class="fixed-header-bg"><div class="fixed-header-text"><h1>{st.session_state.active_project}</h1></div></div>', unsafe_allow_html=True)
         st.markdown('<div class="upload-pull-up">', unsafe_allow_html=True)
-        
-        llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1) if api_key else None
-        uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
-        run_review = st.button("🔬 Analyse paper", use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        current_proj = st.session_state.projects[st.session_state.active_project]
-
-        if uploaded_files and llm and run_review:
-            progress_text = st.empty()
-            if 'session_uploads' not in st.session_state: st.session_state.session_uploads = set()
-            for file in uploaded_files:
-                if file.name in st.session_state.session_uploads: continue
-                progress_text.text(f"📖 Critically reviewing: {file.name}...")
-                try:
+        llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
+        uploaded_files = st.file_uploader("Upload PDFs", type="pdf", accept_multiple_files=True)
+        if st.button("🔬 Analyse paper", use_container_width=True):
+            if uploaded_files:
+                for file in uploaded_files:
                     reader = PdfReader(file)
                     text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
-                    
-                    prompt = (
-                        "Act as a Senior Academic Researcher and PhD Supervisor specializing in Systematic Literature Reviews. "
-                        "Evaluate the logic, methodology, and contribution to the field. "
-                        "Carefully analyze the text and extract for the following categories:\n\n"
-                        "[TITLE]: The full title.\n[AUTHORS]: All primary authors.\n[YEAR]: Year of publication.\n"
-                        "[REFERENCE]: Full Harvard-style citation.\n"
-                        "[SUMMARY]: 2-3 sentence overview of objective and outcome.\n"
-                        "[BACKGROUND]: Specific gap and theoretical framework.\n"
-                        "[METHODOLOGY]: Design, sample size (N=), and instruments.\n"
-                        "[CONTEXT]: Geography and population included.\n"
-                        "[FINDINGS]: Results, statistical significance, and relation to seminal works.\n"
-                        "[RELIABILITY]: Critique limitations, biases, and check p-values/CIs.\n\n"
-                        "STRICT RULES: Output ONLY bracketed labels. No bolding or bullets. TEXT: " + text[:30000]
-                    )
-                    
+                    prompt = "Act as Senior Academic Researcher. Extract: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. RULES: Only labels, no bold/bullets. TEXT: " + text[:30000]
                     res = llm.invoke([HumanMessage(content=prompt)]).content
-                    res = re.sub(r'\*', '', res) 
-                    
+                    res = re.sub(r'\*', '', res)
                     def ext(label):
-                        p = rf"\[{label}\]\s*:?\s*(.*?)(?=\s*\[|$)"
-                        m = re.search(p, res, re.DOTALL | re.IGNORECASE)
+                        m = re.search(rf"\[{label}\]\s*:?\s*(.*?)(?=\s*\[|$)", res, re.DOTALL | re.IGNORECASE)
                         return m.group(1).strip() if m else "Not explicitly stated."
-                    
-                    new_paper = {
-                        "#": len(current_proj["papers"]) + 1, 
-                        "Title": ext("TITLE"), "Authors": ext("AUTHORS"), "Year": ext("YEAR"), 
-                        "Reference": ext("REFERENCE"), "Summary": ext("SUMMARY"), 
-                        "Background": ext("BACKGROUND"), "Methodology": ext("METHODOLOGY"), 
-                        "Context": ext("CONTEXT"), "Findings": ext("FINDINGS"), 
-                        "Reliability": ext("RELIABILITY")
-                    }
+                    new_paper = {"#": len(st.session_state.projects[st.session_state.active_project]["papers"]) + 1, "Title": ext("TITLE"), "Authors": ext("AUTHORS"), "Year": ext("YEAR"), "Reference": ext("REFERENCE"), "Summary": ext("SUMMARY"), "Background": ext("BACKGROUND"), "Methodology": ext("METHODOLOGY"), "Context": ext("CONTEXT"), "Findings": ext("FINDINGS"), "Reliability": ext("RELIABILITY")}
                     st.session_state.projects[st.session_state.active_project]["papers"].append(new_paper)
-                    st.session_state.projects[st.session_state.active_project]["last_accessed"] = time.time()
-                    st.session_state.session_uploads.add(file.name)
-                    save_full_library(st.session_state.projects)
-                except Exception as e: st.error(f"Error during analysis: {e}")
-            progress_text.empty()
-            st.rerun()
+                save_full_library(st.session_state.projects)
+                st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
         papers_data = st.session_state.projects[st.session_state.active_project]["papers"]
         if papers_data:
-            t1, t2 = st.tabs(["🖼️ Individual Papers", "📊 Master Table"])
+            t1, t2, t3 = st.tabs(["🖼️ Individual Papers", "📊 Master Table", "🧠 Synthesis"])
             with t1:
                 for idx, r in enumerate(reversed(papers_data)):
                     real_idx = len(papers_data) - 1 - idx
                     with st.container(border=True):
                         st.subheader(f"Ref {r.get('#')}: {r.get('Title')}")
-                        st.markdown(f'🖊️ Authors: {r.get("Authors")} | 🗓️ Year: {r.get("Year")}')
+                        st.markdown(f'🖊️ Authors: {r.get("Authors")}<br>🗓️ Year: {r.get("Year")}<br>🔗 Full Citation: {r.get("Reference")}', unsafe_allow_html=True)
                         st.divider()
                         sections = [("📝 Summary", r.get("Summary")), ("📖 Background", r.get("Background")), ("⚙️ Methodology", r.get("Methodology")), ("📍 Context", r.get("Context")), ("💡 Findings", r.get("Findings")), ("🛡️ Reliability", r.get("Reliability"))]
-                        for k, v in sections: 
-                            st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
-                        
+                        for k, v in sections: st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
                         st.markdown('<div class="card-del-container">', unsafe_allow_html=True)
-                        if st.button("🗑️ Delete Paper", key=f"del_paper_{real_idx}"):
+                        if st.button("🗑️ Delete Paper", key=f"del_p_{real_idx}"):
                             st.session_state.projects[st.session_state.active_project]["papers"].pop(real_idx)
-                            for i, p in enumerate(st.session_state.projects[st.session_state.active_project]["papers"]): p["#"] = i + 1
-                            save_full_library(st.session_state.projects)
-                            st.rerun()
+                            save_full_library(st.session_state.projects); st.rerun()
                         st.markdown('</div>', unsafe_allow_html=True)
             with t2:
-                df = pd.DataFrame(papers_data)
-                st.dataframe(df, use_container_width=True, hide_index=True)
+                st.dataframe(pd.DataFrame(papers_data), use_container_width=True, hide_index=True)
+            with t3:
+                evidence = "".join([f"Paper {r.get('#')}: {r.get('Findings')}\n" for r in papers_data])
+                synth_res = llm.invoke([HumanMessage(content=f"Synthesize these findings: {evidence}")]).content
+                st.write(synth_res)
 
-        st.markdown('<div class="bottom-actions">', unsafe_allow_html=True)
-        f1, f2 = st.columns([8, 1])
-        with f2:
-            if st.button("🏠 Library", key="final_lib", use_container_width=True):
-                st.session_state.active_project = None; st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.columns([8, 1])[1].button("🏠 Library", on_click=lambda: setattr(st.session_state, 'active_project', None))
