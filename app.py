@@ -71,7 +71,7 @@ st.markdown("""
     top: 0;
     left: 0;
     width: 100%;
-    height: 90px;
+    height: 80px; /* Slightly shorter now that subtitle is gone */
     background: white;
     border-bottom: 2px solid #f0f2f6;
     z-index: 1000;
@@ -80,12 +80,17 @@ st.markdown("""
     align-items: center;
 }
 
-.fixed-header-text h1 { margin: 0; font-size: 2.2rem; color: #0000FF; line-height: 1.1; }
-.fixed-header-text p { margin: 0; font-size: 1rem; color: #18A48C; font-weight: bold; }
+/* Main Project Title */
+.fixed-header-text h1 { 
+    margin: 0; 
+    font-size: 2.2rem; 
+    color: #0000FF; 
+    line-height: 1.1; 
+}
 
 /* Spacer to push content below fixed header */
 .header-spacer {
-    height: 80px; 
+    height: 70px; 
     width: 100%;
 }
 
@@ -202,12 +207,11 @@ if check_password():
     # VIEW 2: ANALYSIS DASHBOARD (Individual Project)
     # ==========================================
     else:
-        # 1. FIXED HEADER (Updated Title Logic)
+        # 1. FIXED HEADER (Project Name Only)
         st.markdown(f'''
         <div class="fixed-header-bg">
             <div class="fixed-header-text">
                 <h1>{st.session_state.active_project}</h1>
-                <p>PhD-Level Analysis</p>
             </div>
         </div>
         <div class="header-spacer"></div>
@@ -329,11 +333,9 @@ if check_password():
                             st.markdown("### 🚀 Future Research Directions"); st.write(get_synth("FUTURE_DIRECTIONS"))
 
         # 3. BOTTOM BUTTONS (Footer Area)
-        # This renders at the very bottom of the page flow
         st.write("##")
         st.markdown('<div class="bottom-actions">', unsafe_allow_html=True)
         
-        # Use columns to align right or center. Let's do Right aligned.
         f1, f2, f3 = st.columns([6, 1, 1])
         with f2:
             if st.button("💾 Save Progress", use_container_width=True):
@@ -341,7 +343,7 @@ if check_password():
                 st.toast("Saved!", icon="✅")
         with f3:
             if st.button("🏠 Library", use_container_width=True):
-                save_data(st.session_state.projects) # Auto-save on exit
+                save_data(st.session_state.projects)
                 st.session_state.active_project = None
                 st.rerun()
         
