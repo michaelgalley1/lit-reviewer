@@ -35,7 +35,7 @@ def save_data(data):
     with open(DB_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
-# 3. STYLING (CSS using REM)
+# 3. STYLING
 st.markdown("""
 <style>
 [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
@@ -44,7 +44,6 @@ st.markdown("""
     --buddy-blue: #0000FF;
 }
 
-/* REMOVE DEFAULT STREAMLIT PADDING */
 [data-testid="block-container"] {
     padding-top: 0rem !important;
     padding-bottom: 2rem !important;
@@ -91,9 +90,10 @@ st.markdown("""
 
 .fixed-header-text h1 { margin: 0; font-size: 2.2rem; color: #0000FF; line-height: 1.1; }
 
-/* TARGET THE MAIN CONTENT AREA TO PULL IT UP */
-[data-testid="stVerticalBlock"] > div:nth-child(2) {
-    margin-top: -3.5rem !important; /* This pulls the upload section UP */
+/* TARGETED UPLOAD SECTION ONLY */
+.upload-pull-up {
+    margin-top: -2.0rem !important; /* Pulls ONLY this section up */
+    padding-bottom: 1rem;
 }
 
 .bottom-actions {
@@ -257,14 +257,19 @@ if check_password():
         </div>
         ''', unsafe_allow_html=True)
 
-        # 2. MAIN CONTENT
+        # 2. TARGETED UPLOAD SECTION
+        st.markdown('<div class="upload-pull-up">', unsafe_allow_html=True)
+        
         llm = None
         if api_key:
             llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
 
         uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
         run_review = st.button("🔬 Analyse paper", use_container_width=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
+        # Ensure current project data is in correct format (dict)
         current_proj = st.session_state.projects[st.session_state.active_project]
         if isinstance(current_proj, list):
              current_proj = {"papers": current_proj, "last_accessed": time.time()}
