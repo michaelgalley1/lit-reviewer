@@ -44,7 +44,7 @@ st.markdown("""
     
     /* Sidebar Tight Spacing & Alignment */
     [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
-        gap: 0rem !important; /* Reduced to 0 for maximum tightness */
+        gap: 0.15rem !important; /* Adjusted to 0.15rem as requested */
     }
 
     .del-btn > div > button {
