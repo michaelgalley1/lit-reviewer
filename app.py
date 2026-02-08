@@ -73,21 +73,16 @@ div[data-testid="stButton"] button:hover {
 }
 
 /* -------------------------
-   CARD DELETE BUTTON (Pinned to Right Edge)
+   BOTTOM-RIGHT DELETE BUTTON
    ------------------------- */
-.card-del-container {
+.card-del-footer {
     display: flex !important;
     justify-content: flex-end !important;
     width: 100% !important;
-    margin-right: 0 !important;
+    margin-top: 1rem;
 }
 
-.card-del-container div[data-testid="stButton"] {
-    display: flex;
-    justify-content: flex-end;
-}
-
-.card-del-container div[data-testid="stButton"] button {
+.card-del-footer div[data-testid="stButton"] button {
     color: #ff4b4b !important;
     border: 1px solid #ff4b4b !important;
     background: transparent !important;
@@ -95,9 +90,7 @@ div[data-testid="stButton"] button:hover {
     height: 34px !important;
     padding: 0 15px !important;
     white-space: nowrap !important;
-    min-width: 140px !important; 
     width: auto !important;
-    margin-right: 0 !important;
 }
 
 /* -------------------------
@@ -286,23 +279,25 @@ if check_password():
                 for idx, r in enumerate(reversed(papers_data)):
                     real_idx = len(papers_data) - 1 - idx
                     with st.container(border=True):
-                        # Clean column logic
-                        col_metric, col_title, col_del = st.columns([1, 10, 2])
+                        col_metric, col_title = st.columns([1, 14])
                         with col_metric: st.metric("Ref", r['#'])
                         with col_title: st.subheader(r['Title'])
-                        with col_del:
-                            # Flex container forces button to right of column
-                            st.markdown('<div class="card-del-container">', unsafe_allow_html=True)
-                            if st.button("🗑️ Delete Paper", key=f"del_paper_{real_idx}"):
-                                st.session_state.projects[st.session_state.active_project]["papers"].pop(real_idx)
-                                for i, p in enumerate(st.session_state.projects[st.session_state.active_project]["papers"]): p["#"] = i + 1
-                                save_data(st.session_state.projects)
-                                st.rerun()
-                            st.markdown('</div>', unsafe_allow_html=True)
+                        
                         st.markdown(f'<div class="metadata-block"><span class="metadata-item">🖊️ Authors: {r["Authors"]}</span><br><span class="metadata-item">🗓️ Year: {r["Year"]}</span><br><span class="metadata-item">🔗 Full Citation: {r["Reference"]}</span></div>', unsafe_allow_html=True)
                         st.divider()
+                        
                         sec = [("📝 Summary", r["Summary"]), ("📖 Background", r["Background"]), ("⚙️ Methodology", r["Methodology"]), ("📍 Context", r["Context"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]
                         for k, v in sec: st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
+                        
+                        # BUTTON ROW AT THE BOTTOM
+                        st.markdown('<div class="card-del-footer">', unsafe_allow_html=True)
+                        if st.button("🗑️ Delete Paper", key=f"del_paper_{real_idx}"):
+                            st.session_state.projects[st.session_state.active_project]["papers"].pop(real_idx)
+                            for i, p in enumerate(st.session_state.projects[st.session_state.active_project]["papers"]): p["#"] = i + 1
+                            save_data(st.session_state.projects)
+                            st.rerun()
+                        st.markdown('</div>', unsafe_allow_html=True)
+
             with t2:
                 df = pd.DataFrame(papers_data)
                 st.dataframe(df, use_container_width=True, hide_index=True)
