@@ -42,37 +42,42 @@ st.markdown("""
         right: 0;
         background-color: white;
         z-index: 999;
-        padding: 50px 50px 15px 50px;
+        padding: 60px 50px 20px 50px;
         border-bottom: 2px solid #f0f2f6;
     }
 
     /* Content Clearance */
-    .main-content-wrapper { margin-top: 140px; }
+    .main-content-wrapper { margin-top: 160px; }
 
-    /* Title Button Styling - Large Blue Font */
+    /* Title Styling - Forcing Large Blue Heading Font */
     .rename-trigger button {
         background: transparent !important;
         border: none !important;
         padding: 0 !important;
         text-align: left !important;
-        font-size: 2.2rem !important;
-        font-weight: bold !important;
+        font-size: 3rem !important; /* Increased to match your screenshot */
+        font-weight: 800 !important; /* Extra bold */
         color: #0000FF !important;
         box-shadow: none !important;
-        line-height: 1.2 !important;
+        line-height: 1 !important;
+        font-family: "Source Sans Pro", sans-serif;
+    }
+    
+    .rename-trigger button:hover {
+        color: #0000FF !important;
+        text-decoration: underline !important;
     }
 
-    /* Save Button Alignment */
-    .save-container {
+    /* Save Button Right Alignment */
+    .save-btn-col {
         display: flex;
         justify-content: flex-end;
         align-items: center;
-        height: 100%;
+        padding-top: 10px;
     }
 
-    /* Sidebar Spacing Restored */
+    /* Sidebar Restored */
     [data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap: 0.4rem !important; }
-    
     div.stButton > button:first-child {
         width: 100% !important; color: var(--buddy-green) !important; border: 1px solid var(--buddy-green) !important; font-weight: bold !important;
     }
@@ -98,7 +103,7 @@ if check_password():
     if 'projects' not in st.session_state: st.session_state.projects = load_data()
     if 'active_project' not in st.session_state: st.session_state.active_project = list(st.session_state.projects.keys())[0]
 
-    # --- SIDEBAR (RESTORED TO PREVIOUS LIST STYLE) ---
+    # --- SIDEBAR (RESTORED) ---
     with st.sidebar:
         st.title("📁 Research Manager")
         new_proj_name = st.text_input("Name for New Review", placeholder="e.g. AI Ethics 2026")
@@ -129,7 +134,7 @@ if check_password():
 
     # --- HEADER ---
     st.markdown('<div class="header-box">', unsafe_allow_html=True)
-    head_col1, head_col2 = st.columns([3, 1]) # Column layout for alignment
+    head_col1, head_col2 = st.columns([3, 1]) 
     
     with head_col1:
         if st.session_state.get("editing_title", False):
@@ -143,14 +148,14 @@ if check_password():
                 st.rerun()
         else:
             st.markdown('<div class="rename-trigger">', unsafe_allow_html=True)
-            if st.button(f"{st.session_state.active_project}"):
+            if st.button(f"📚 {st.session_state.active_project}"):
                 st.session_state.editing_title = True
                 st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
-            st.markdown('<p style="color:#18A48C; margin:0; font-weight: bold; font-size:0.9rem;">PhD-Level Analysis Mode</p>', unsafe_allow_html=True)
+            st.markdown('<p style="color:#18A48C; margin:0; font-weight: bold; font-size:1.1rem; padding-left: 5px;">PhD-Level Analysis Mode</p>', unsafe_allow_html=True)
 
     with head_col2:
-        st.markdown('<div class="save-container">', unsafe_allow_html=True)
+        st.markdown('<div class="save-btn-col">', unsafe_allow_html=True)
         if st.button("💾 Save Project"):
             save_data(st.session_state.projects)
             st.toast("Saved!", icon="✅")
