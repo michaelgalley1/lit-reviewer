@@ -91,7 +91,7 @@ st.markdown("""
 .fixed-header-text h1 { margin: 0; font-size: 1.8rem; color: #0000FF; line-height: 1.1; }
 
 /* Spacer to push content below fixed header - Reduced */
-.header-spacer { height: 40px; width: 100%; }
+.header-spacer { height: 10px; width: 100%; }
 
 .bottom-actions {
     margin-top: 10px;      
