@@ -42,15 +42,22 @@ st.markdown("""
     }
     div.stButton > button:hover, div.stDownloadButton > button:hover { background-color: var(--buddy-green) !important; color: white !important; }
     
-    /* Sidebar Delete Button Styling (Restored from your version) */
+    /* Sidebar Tight Spacing & Alignment */
+    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
+        gap: 0rem !important; /* Reduced to 0 for maximum tightness */
+    }
+
     .del-btn > div > button {
         border: none !important;
         color: #ff4b4b !important;
         background: transparent !important;
+        padding: 0px !important;
+        line-height: 1 !important;
+        height: 38px !important; 
     }
     .del-btn > div > button:hover {
-        color: white !important;
-        background: #ff4b4b !important;
+        color: #b30000 !important;
+        background: transparent !important;
     }
 
     .section-title { font-weight: bold; color: #0000FF; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
@@ -95,7 +102,7 @@ if check_password():
         st.subheader("Your Projects")
         
         for proj in list(st.session_state.projects.keys()):
-            cols = st.columns([4, 1]) # Restored 4:1 ratio
+            cols = st.columns([4, 1])
             is_active = (proj == st.session_state.active_project)
             label = f"📍 {proj}" if is_active else proj
             
@@ -104,7 +111,7 @@ if check_password():
                 st.session_state.active_project = proj
                 st.rerun()
             
-            # Delete Button (Restored Logic)
+            # Delete Button (The tiny cross)
             if len(st.session_state.projects) > 1:
                 st.markdown('<div class="del-btn">', unsafe_allow_html=True)
                 if cols[1].button("×", key=f"del_{proj}", help=f"Delete {proj}"):
@@ -122,7 +129,7 @@ if check_password():
         st.markdown(f'<h1 style="margin:0; font-size: 1.8rem; color:#0000FF;">📚 {st.session_state.active_project}</h1>', unsafe_allow_html=True)
         st.markdown('<p style="color:#18A48C; margin-bottom:5px; font-weight: bold;">PhD-Level Analysis Mode</p>', unsafe_allow_html=True)
     with head_col2:
-        st.write("##") 
+        st.write("##") # Alignment
         if st.button("💾 Save Progress"):
             save_data(st.session_state.projects)
             st.toast("Project Saved!", icon="✅")
