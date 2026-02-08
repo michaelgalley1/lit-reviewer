@@ -10,14 +10,13 @@ import time
 # 1. PAGE CONFIGURATION
 st.set_page_config(page_title="Literature Review Buddy", page_icon="📚", layout="wide")
 
-# 2. DATABASE CONNECTION (Google Sheets)
+# 2. DATABASE CONNECTION
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def load_full_library():
     try:
         df = conn.read(ttl=0)
-        if df is None or df.empty or 'Project' not in df.columns: 
-            return {}
+        if df is None or df.empty or 'Project' not in df.columns: return {}
         library = {}
         for _, row in df.iterrows():
             proj = row.get('Project')
@@ -32,8 +31,7 @@ def load_full_library():
                     "Context": row.get('Context'), "Findings": row.get('Findings'), "Reliability": row.get('Reliability')
                 })
         return library
-    except Exception:
-        return {}
+    except: return {}
 
 def save_full_library(library):
     flat_data = []
@@ -50,58 +48,28 @@ def save_full_library(library):
             new_df = pd.DataFrame(flat_data)
             conn.update(data=new_df)
             return True
-        except Exception as e:
-            st.error(f"⚠️ Storage Error: {e}")
-            return False
+        except: return False
 
-# 3. GLOBAL BRANDING & STYLING (Green Tabs, Fixed Grid, No Red Underline)
+# 3. GLOBAL BRANDING & STYLING (Fixed Red Line & Grid)
 st.markdown("""
 <style>
 [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
 :root { --buddy-green: #18A48C; --buddy-blue: #0000FF; }
 [data-testid="block-container"] { padding-top: 0rem !important; }
 
-/* Global Input Borders */
-div[data-baseweb="input"], div[data-baseweb="textarea"] {
-    border: 1px solid var(--buddy-green) !important;
-}
+/* Input Borders & Hover */
+div[data-baseweb="input"], div[data-baseweb="textarea"] { border: 1px solid var(--buddy-green) !important; }
+button:hover { background-color: var(--buddy-green) !important; border-color: var(--buddy-green) !important; color: white !important; }
 
-/* Global Button Hover */
-button:hover {
-    background-color: var(--buddy-green) !important;
-    border-color: var(--buddy-green) !important;
-    color: white !important;
-}
+/* Tab Styling - No background hover, specific green underline */
+button[data-baseweb="tab"] { background-color: transparent !important; }
+button[data-baseweb="tab"]:hover { background-color: transparent !important; color: var(--buddy-green) !important; }
+button[data-baseweb="tab"][aria-selected="true"] { color: var(--buddy-green) !important; border-bottom: 2px solid var(--buddy-green) !important; }
 
-/* Tab Styling - Removing background hover and red underline */
-button[data-baseweb="tab"] {
-    background-color: transparent !important;
-}
-button[data-baseweb="tab"]:hover {
-    background-color: transparent !important;
-    color: var(--buddy-green) !important;
-}
-button[data-baseweb="tab"][aria-selected="true"] {
-    color: var(--buddy-green) !important;
-    border-bottom: 2px solid var(--buddy-green) !important;
-}
+/* Hiding the default red underline bar */
+div[data-baseweb="tab-highlight"] { background-color: transparent !important; visibility: hidden !important; }
 
-/* Specific CSS to hide the secondary red/gray underline from Streamlit */
-div[data-baseweb="tab-highlight"] {
-    background-color: transparent !important;
-    visibility: hidden !important;
-}
-
-/* Custom Card Style for Synthesis to ensure equal heights */
-.synth-card {
-    min-height: 280px;
-    border: 1px solid #e6e9ef;
-    border-radius: 0.5rem;
-    padding: 1.2rem;
-    background-color: white;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-}
-
+.synth-card { min-height: 280px; border: 1px solid #e6e9ef; border-radius: 0.5rem; padding: 1.2rem; background-color: white; }
 .section-title { font-weight: bold; color: var(--buddy-blue); margin-top: 1rem; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 0.06rem solid #eee; }
 .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
 .fixed-header-bg { position: fixed; top: 0; left: 0; width: 100%; height: 4.5rem; background: white; border-bottom: 0.125rem solid #f0f2f6; z-index: 1000; padding-left: 3.75rem; display: flex; align-items: center; }
@@ -165,9 +133,7 @@ if st.session_state.active_project is None:
                             st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
                             if st.button(icon, key=f"{key}_{proj_name}"):
                                 if key == "ed": st.session_state.renaming_project = proj_name
-                                elif key == "dl": 
-                                    del st.session_state.projects[proj_name]
-                                    save_full_library(st.session_state.projects)
+                                elif key == "dl": del st.session_state.projects[proj_name]; save_full_library(st.session_state.projects)
                                 else: 
                                     st.session_state.active_project = proj_name
                                     st.session_state.projects[proj_name]["last_accessed"] = time.time()
@@ -189,19 +155,37 @@ else:
                 if file.name in st.session_state.processed_filenames: continue
                 progress_container.info(f"📖 Analysing: {file.name}...")
                 reader = PdfReader(file)
-                text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
-                prompt = "Act as Senior PhD Supervisor. Analysis: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. NO BOLD/BULLETS. TEXT: " + text[:35000]
-                res = llm.invoke([HumanMessage(content=prompt)]).content
-                res = re.sub(r'\*', '', res)
-                def ext(label):
-                    m = re.search(rf"\[{label}\]\s*:?\s*(.*?)(?=\s*\[|$)", res, re.DOTALL | re.IGNORECASE)
-                    return m.group(1).strip() if m else "Not explicitly stated."
+                # Read up to 15 pages for better context
+                text = "".join([p.extract_text() for p in reader.pages[:15] if p.extract_text()]).strip()
                 
-                ext_title = ext("TITLE")
+                prompt = (
+                    "Act as a PhD Supervisor. Analyze the research paper text provided. "
+                    "Extract precisely the following categories. Use the EXACT labels provided in brackets.\n\n"
+                    "[TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].\n\n"
+                    "Rules: Output ONLY labels followed by their content. No stars or bolding. Text: " + text[:38000]
+                )
+                
+                res = llm.invoke([HumanMessage(content=prompt)]).content
+                
+                # Fuzzy Extraction Logic: Removes AI markdown and captures content even if labels vary slightly
+                def fuzzy_ext(label):
+                    clean_res = re.sub(r'\*', '', res)
+                    pattern = rf"\[?{label}\]?\s*:?\s*(.*?)(?=\s*\[|$)"
+                    m = re.search(pattern, clean_res, re.DOTALL | re.IGNORECASE)
+                    return m.group(1).strip() if m else "Extraction failed. Check PDF quality."
+                
+                ext_title = fuzzy_ext("TITLE")
                 if ext_title.lower() in existing_titles:
                     st.session_state.processed_filenames.add(file.name); continue
 
-                new_paper = {"#": len(st.session_state.projects[st.session_state.active_project]["papers"]) + 1, "Title": ext_title, "Authors": ext("AUTHORS"), "Year": ext("YEAR"), "Reference": ext("REFERENCE"), "Summary": ext("SUMMARY"), "Background": ext("BACKGROUND"), "Methodology": ext("METHODOLOGY"), "Context": ext("CONTEXT"), "Findings": ext("FINDINGS"), "Reliability": ext("RELIABILITY")}
+                new_paper = {
+                    "#": len(st.session_state.projects[st.session_state.active_project]["papers"]) + 1,
+                    "Title": ext_title, "Authors": fuzzy_ext("AUTHORS"), "Year": fuzzy_ext("YEAR"), 
+                    "Reference": fuzzy_ext("REFERENCE"), "Summary": fuzzy_ext("SUMMARY"), 
+                    "Background": fuzzy_ext("BACKGROUND"), "Methodology": fuzzy_ext("METHODOLOGY"), 
+                    "Context": fuzzy_ext("CONTEXT"), "Findings": fuzzy_ext("FINDINGS"), 
+                    "Reliability": fuzzy_ext("RELIABILITY")
+                }
                 st.session_state.projects[st.session_state.active_project]["papers"].append(new_paper)
                 st.session_state.processed_filenames.add(file.name)
             progress_container.empty()
@@ -229,57 +213,32 @@ else:
             csv = df.to_csv(index=False).encode('utf-8')
             st.download_button("📥 Export to CSV", data=csv, file_name=f"{st.session_state.active_project}_review.csv", mime='text/csv')
         with t3:
-            # --- SYNTHESIS GRID VIEW (PhD Supervisor Instructions) ---
+            # --- SYNTHESIS GRID ---
             synth_data = st.session_state.get(f"synth_dict_{st.session_state.active_project}", {})
-            
             if synth_data:
                 c1, c2 = st.columns(2)
-                with c1:
-                    st.markdown(f'<div class="synth-card">📋 <b>Overview of papers</b><br><br>{synth_data.get("overview", "...")}</div>', unsafe_allow_html=True)
-                with c2:
-                    st.markdown(f'<div class="synth-card">🤝 <b>Overlaps in their findings</b><br><br>{synth_data.get("overlaps", "...")}</div>', unsafe_allow_html=True)
-                
+                with c1: st.markdown(f'<div class="synth-card">📋 <b>Overview of papers</b><br><br>{synth_data.get("overview")}</div>', unsafe_allow_html=True)
+                with c2: st.markdown(f'<div class="synth-card">🤝 <b>Overlaps in their findings</b><br><br>{synth_data.get("overlaps")}</div>', unsafe_allow_html=True)
                 st.markdown("<br>", unsafe_allow_html=True)
                 c3, c4 = st.columns(2)
-                with c3:
-                    st.markdown(f'<div class="synth-card">⚔️ <b>Contradictions in their findings</b><br><br>{synth_data.get("contradictions", "...")}</div>', unsafe_allow_html=True)
-                with c4:
-                    st.markdown(f'<div class="synth-card">🚀 <b>Suggestions for future research</b><br><br>{synth_data.get("future", "...")}</div>', unsafe_allow_html=True)
-                
+                with c3: st.markdown(f'<div class="synth-card">⚔️ <b>Contradictions in their findings</b><br><br>{synth_data.get("contradictions")}</div>', unsafe_allow_html=True)
+                with c4: st.markdown(f'<div class="synth-card">🚀 <b>Suggestions for future research</b><br><br>{synth_data.get("future")}</div>', unsafe_allow_html=True)
                 st.markdown("<br>", unsafe_allow_html=True)
-                st.markdown(f'<div class="synth-card" style="min-height: 150px;">📝 <b>Summary of synthesis</b><br><br>{synth_data.get("summary", "...")}</div>', unsafe_allow_html=True)
-            else:
-                st.info("No synthesis generated yet.")
+                st.markdown(f'<div class="synth-card" style="min-height: 150px;">📝 <b>Summary of synthesis</b><br><br>{synth_data.get("summary")}</div>', unsafe_allow_html=True)
+            else: st.info("No synthesis generated yet.")
 
             st.markdown("<br>", unsafe_allow_html=True)
             sc1, sc2 = st.columns([8.5, 1.5])
             with sc2:
                 if st.button("🔄 Try Again", use_container_width=True):
                     with st.spinner("Synthesizing..."):
-                        evidence = "".join([f"Paper {r.get('#')} - Title: {r.get('Title')}. Findings: {r.get('Findings')}\n" for r in papers_data])
-                        
-                        # THE PHD-LEVEL DETAILED PROMPT
-                        prompt = (
-                            "Act as a PhD Supervisor and Senior Researcher. Analyze the following project findings for a Systematic Literature Review. "
-                            "You must be critical and look for deep thematic connections. Extract these parts:\n\n"
-                            "[OVERVIEW]: Provide a high-level academic overview of the papers' collective focus.\n"
-                            "[OVERLAPS]: Identify 3-4 key thematic overlaps or supporting results shared across the papers.\n"
-                            "[CONTRADICTIONS]: Highlight any significant contradictions, debates, or conflicting methodologies.\n"
-                            "[FUTURE]: Identify the 'Research Gap' and suggest 3 concrete directions for future study.\n"
-                            "[SUMMARY]: Write a 4-sentence professional conclusion of the synthesis.\n\n"
-                            "DATA: " + evidence
-                        )
-                        
+                        evidence = "".join([f"Paper {r.get('#')}: {r.get('Findings')}\n" for r in papers_data])
+                        prompt = ("Act as PhD Supervisor. Synthesize findings into categories: [OVERVIEW], [OVERLAPS], [CONTRADICTIONS], [FUTURE], [SUMMARY]. DATA: " + evidence)
                         res = llm.invoke([HumanMessage(content=prompt)]).content
                         def get_p(lbl):
                             m = re.search(rf"\[{lbl}\]\s*:?\s*(.*?)(?=\s*\[|$)", res, re.DOTALL | re.IGNORECASE)
-                            return m.group(1).strip() if m else "Analysis pending."
-                        
-                        st.session_state[f"synth_dict_{st.session_state.active_project}"] = {
-                            "overview": get_p("OVERVIEW"), "overlaps": get_p("OVERLAPS"),
-                            "contradictions": get_p("CONTRADICTIONS"), "future": get_p("FUTURE"),
-                            "summary": get_p("SUMMARY")
-                        }
+                            return m.group(1).strip() if m else "Pending."
+                        st.session_state[f"synth_dict_{st.session_state.active_project}"] = {"overview": get_p("OVERVIEW"), "overlaps": get_p("OVERLAPS"), "contradictions": get_p("CONTRADICTIONS"), "future": get_p("FUTURE"), "summary": get_p("SUMMARY")}
                         st.rerun()
 
     # RIGHT ALIGNED ACTIONS
