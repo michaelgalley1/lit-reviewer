@@ -42,8 +42,9 @@ st.markdown("""
     }
     div.stButton > button:hover, div.stDownloadButton > button:hover { background-color: var(--buddy-green) !important; color: white !important; }
     
-    /* Sidebar Tight Spacing */
+    /* Sidebar Tight Spacing & Column Alignment */
     [data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap: 0.4rem !important; }
+    [data-testid="column"] { display: flex; align-items: center; } /* Centers icons vertically with project box */
 
     /* INVISIBLE BUTTON BOX - JUST CLICKABLE EMOJI */
     .icon-btn > div > button {
@@ -51,7 +52,7 @@ st.markdown("""
         background-color: transparent !important;
         box-shadow: none !important;
         padding: 0px !important;
-        font-size: 1.2rem !important;
+        font-size: 1.3rem !important;
         height: 38px !important;
         width: 100% !important;
         display: flex !important;
@@ -59,16 +60,13 @@ st.markdown("""
         justify-content: center !important;
     }
     
-    .icon-btn > div > button:hover, .icon-btn > div > button:active, .icon-btn > div > button:focus {
-        background-color: transparent !important;
-        color: inherit !important;
-        border: none !important;
-        box-shadow: none !important;
-    }
+    .icon-btn > div > button:hover { background-color: transparent !important; box-shadow: none !important; }
 
-    /* Small Adjustments for Rename UI Buttons */
-    .rename-save-btn > div > button { color: white !important; background-color: var(--buddy-green) !important; }
-    .rename-cancel-btn > div > button { color: #666 !important; border: 1px solid #ccc !important; }
+    /* RENAME UI - Forcing Save to the far right */
+    .rename-container { width: 100%; display: flex; justify-content: space-between; }
+    .rename-save-btn { display: flex; justify-content: flex-end; width: 100%; }
+    .rename-save-btn > div > button { color: white !important; background-color: var(--buddy-green) !important; width: 80px !important; }
+    .rename-cancel-btn > div > button { color: #666 !important; border: 1px solid #ccc !important; width: 80px !important; }
 
     .section-title { font-weight: bold; color: #0000FF; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
     .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
@@ -112,13 +110,15 @@ if check_password():
         st.subheader("Your Projects")
         
         for proj in list(st.session_state.projects.keys()):
-            cols = st.columns([4, 1, 1])
+            # 5:1:1 ratio keeps the name dominant and icons tight together at the end
+            cols = st.columns([5, 1, 1])
             is_active = (proj == st.session_state.active_project)
             label = f"📍 {proj}" if is_active else proj
             
-            if cols[0].button(label, key=f"sel_{proj}", use_container_width=True, type="primary" if is_active else "secondary"):
-                st.session_state.active_project = proj
-                st.rerun()
+            with cols[0]:
+                if st.button(label, key=f"sel_{proj}", use_container_width=True, type="primary" if is_active else "secondary"):
+                    st.session_state.active_project = proj
+                    st.rerun()
             
             with cols[1]:
                 st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
@@ -137,11 +137,10 @@ if check_password():
                         st.rerun()
                     st.markdown('</div>', unsafe_allow_html=True)
             
-            # --- INLINE RENAME UI ---
+            # --- IMPROVED INLINE RENAME UI ---
             if st.session_state.get(f"renaming_{proj}", False):
-                new_name = st.text_input(f"Rename to:", value=proj, key=f"input_{proj}", label_visibility="collapsed")
+                new_name = st.text_input(f"Rename", value=proj, key=f"input_{proj}", label_visibility="collapsed")
                 
-                # Aligning Cancel (Left) and Save (Right)
                 c_left, c_right = st.columns(2)
                 with c_left:
                     st.markdown('<div class="rename-cancel-btn">', unsafe_allow_html=True)
@@ -150,6 +149,7 @@ if check_password():
                         st.rerun()
                     st.markdown('</div>', unsafe_allow_html=True)
                 with c_right:
+                    # Wraps save button in a div that forces right-alignment
                     st.markdown('<div class="rename-save-btn">', unsafe_allow_html=True)
                     if st.button("Save", key=f"save_{proj}"):
                         if new_name and new_name != proj:
@@ -168,7 +168,7 @@ if check_password():
         st.markdown('<p style="color:#18A48C; margin-bottom:5px; font-weight: bold;">PhD-Level Analysis Mode</p>', unsafe_allow_html=True)
     with head_col2:
         st.write("##") 
-        if st.button("💾 Save Progress"):
+        if st.button("💾 Save Project"):
             save_data(st.session_state.projects)
             st.toast("Project Saved!", icon="✅")
     st.markdown('</div>', unsafe_allow_html=True)
