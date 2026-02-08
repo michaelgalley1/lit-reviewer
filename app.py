@@ -37,32 +37,31 @@ st.markdown("""
         --buddy-blue: #0000FF;
     }
 
-    /* Input box styling */
-    [data-testid="stTextInput"] div[data-baseweb="input"] {
-        border: 1px solid #d3d3d3 !important;
-    }
-    
-    [data-testid="stTextInput"] div[data-baseweb="input"]:focus-within {
-        border: 2px solid var(--buddy-green) !important;
-        box-shadow: none !important;
-    }
-    
-    input:focus {
-        outline: none !important;
-        box-shadow: none !important;
+    /* REMOVE DEFAULT STREAMLIT PADDING */
+    [data-testid="block-container"] {
+        padding-top: 0rem !important;
+        margin-top: 0rem !important;
+        padding-bottom: 0rem !important;
     }
 
-    /* Sticky Header */
+    /* STICKY HEADER - Compact */
     .sticky-wrapper {
         position: fixed; top: 0; left: 0; width: 100%;
         background-color: white; z-index: 1000;
-        padding: 10px 50px 10px 50px; /* Reduced top/bottom padding */
+        padding: 10px 50px 10px 50px;
         border-bottom: 2px solid #f0f2f6;
     }
     
-    /* Main Content Spacing - Reduced to close the gap */
-    .main-content { margin-top: 90px; }
-    .block-container { padding-top: 0rem !important; }
+    /* Force Headers to have NO margin for tight stacking */
+    .sticky-wrapper h1, .sticky-wrapper p {
+        margin-bottom: 0px !important;
+        margin-top: 0px !important;
+        line-height: 1.2 !important;
+        padding-bottom: 0px !important;
+    }
+
+    /* Main Content - Pulled up to reduce gap */
+    .main-content { margin-top: 80px; } 
 
     /* UNIFIED BUTTON STYLING */
     div.stButton > button:first-child, div.stDownloadButton > button:first-child {
@@ -71,8 +70,9 @@ st.markdown("""
         border: 2px solid var(--buddy-green) !important; 
         font-weight: bold !important;
         background-color: transparent !important;
-        padding-top: 10px !important;
-        padding-bottom: 10px !important;
+        padding-top: 5px !important;
+        padding-bottom: 5px !important;
+        height: auto !important;
     }
     
     div.stButton > button:hover, div.stDownloadButton > button:hover {
@@ -93,12 +93,17 @@ st.markdown("""
         background: #ff4b4b !important;
     }
     
-    /* Sidebar Spacing - Made much tighter */
+    /* Sidebar Spacing - Tight */
     [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
-        gap: 0.05rem !important;
+        gap: 0rem !important;
     }
-
-    /* Save Button Styling (Minimal) */
+    
+    /* Save Button Styling (Minimal & Tight) */
+    .save-btn-container {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: -10px; /* Pulls tabs closer */
+    }
     .save-btn-container button {
         border: none !important;
         font-size: 1.5rem !important;
@@ -126,7 +131,7 @@ def check_password():
     if "password_correct" not in st.session_state:
         st.markdown('<h1 style="margin:0; font-size: 1.8rem; color:#0000FF;">📚 Literature Review Buddy</h1>', unsafe_allow_html=True)
         st.markdown('<p style="color:#18A48C; font-weight: bold; margin-bottom:20px;">Your PhD-Level Research Assistant</p>', unsafe_allow_html=True)
-        pwd = st.text_input("Enter password to unlock Literature Review Buddy", type="password")
+        pwd = st.text_input("Enter password", type="password")
         if st.button("Unlock Tool"):
             if pwd == correct_password:
                 st.session_state["password_correct"] = True
@@ -196,8 +201,8 @@ if check_password():
     # --- MAIN PAGE HEADER ---
     st.markdown('<div class="sticky-wrapper">', unsafe_allow_html=True)
     st.markdown(f'''
-        <h1 style="margin:0; font-size: 1.8rem; color:#0000FF;">📚 Literature Review Buddy</h1>
-        <p style="color:#18A48C; margin-bottom:5px; font-weight: bold;">Active Project: {st.session_state.active_project}</p>
+        <h1 style="margin:0; font-size: 1.8rem; color:#0000FF; padding-bottom: 0px;">📚 Literature Review Buddy</h1>
+        <p style="color:#18A48C; margin:0; font-weight: bold; padding-top: 0px;">Active Project: {st.session_state.active_project}</p>
     ''', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -270,10 +275,9 @@ if check_password():
         active_data = st.session_state.projects[st.session_state.active_project]
 
         if active_data:
-            st.write("##") # Spacer
+            # Removed the big spacer here
             
-            # --- SAVE BUTTON & TABS ROW ---
-            # Columns to position Save button to the right, just above tabs
+            # --- SAVE BUTTON (Right Aligned) ---
             col_spacer, col_save = st.columns([10, 1])
             with col_save:
                 st.markdown('<div class="save-btn-container">', unsafe_allow_html=True)
