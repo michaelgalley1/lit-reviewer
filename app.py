@@ -73,12 +73,12 @@ div[data-testid="stButton"] button:hover {
 }
 
 /* -------------------------
-   CARD HEADER FLEX (Title + Delete)
+   CARD DELETE BUTTON (True Right Alignment)
    ------------------------- */
-.card-header-flex {
+/* This forces the button to the absolute right of its column */
+.card-del-container {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    justify-content: flex-end;
     width: 100%;
 }
 
@@ -290,29 +290,28 @@ if check_password():
                 for idx, r in enumerate(reversed(papers_data)):
                     real_idx = len(papers_data) - 1 - idx
                     with st.container(border=True):
-                        # Use two main columns: Ref indicator and everything else
-                        col_metric, col_main = st.columns([1, 14])
+                        # TIGHTENED RATIOS to push button right
+                        col_metric, col_title, col_del = st.columns([1, 12, 1.2])
                         
                         with col_metric:
                             st.metric("Ref", r['#'])
                         
-                        with col_main:
-                            # Use nested columns to put Title and Delete on the same line
-                            col_title, col_del = st.columns([10, 3])
-                            with col_title:
-                                st.subheader(r['Title'])
-                            with col_del:
-                                st.markdown('<div class="card-del-container">', unsafe_allow_html=True)
-                                if st.button("🗑️ Delete Paper", key=f"del_paper_{real_idx}"):
-                                    st.session_state.projects[st.session_state.active_project]["papers"].pop(real_idx)
-                                    for i, p in enumerate(st.session_state.projects[st.session_state.active_project]["papers"]):
-                                        p["#"] = i + 1
-                                    save_data(st.session_state.projects)
-                                    st.rerun()
-                                st.markdown('</div>', unsafe_allow_html=True)
+                        with col_title:
+                            st.subheader(r['Title'])
+                            
+                        with col_del:
+                            # Added card-del-container for CSS flex-end pin
+                            st.markdown('<div class="card-del-container">', unsafe_allow_html=True)
+                            if st.button("🗑️ Delete Paper", key=f"del_paper_{real_idx}"):
+                                st.session_state.projects[st.session_state.active_project]["papers"].pop(real_idx)
+                                for i, p in enumerate(st.session_state.projects[st.session_state.active_project]["papers"]):
+                                    p["#"] = i + 1
+                                save_data(st.session_state.projects)
+                                st.rerun()
+                            st.markdown('</div>', unsafe_allow_html=True)
 
-                            # Metadata directly under the title row
-                            st.markdown(f'<div class="metadata-block"><span class="metadata-item">🖊️ Authors: {r["Authors"]}</span><br><span class="metadata-item">🗓️ Year: {r["Year"]}</span><br><span class="metadata-item">🔗 Full Citation: {r["Reference"]}</span></div>', unsafe_allow_html=True)
+                        # Metadata directly under the title row
+                        st.markdown(f'<div class="metadata-block"><span class="metadata-item">🖊️ Authors: {r["Authors"]}</span><br><span class="metadata-item">🗓️ Year: {r["Year"]}</span><br><span class="metadata-item">🔗 Full Citation: {r["Reference"]}</span></div>', unsafe_allow_html=True)
                         
                         st.divider()
                         sec = [("📝 Summary", r["Summary"]), ("📖 Background", r["Background"]), ("⚙️ Methodology", r["Methodology"]), ("📍 Context", r["Context"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]
