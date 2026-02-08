@@ -90,7 +90,6 @@ st.markdown("""
 
 .fixed-header-text h1 { margin: 0; font-size: 2.2rem; color: #0000FF; line-height: 1.1; }
 
-/* TARGETED UPLOAD SECTION ONLY - SET TO -3.0rem */
 .upload-pull-up {
     margin-top: -3.0rem !important; 
     padding-bottom: 1rem;
@@ -148,17 +147,9 @@ if check_password():
     if 'renaming_project' not in st.session_state:
         st.session_state.renaming_project = None
 
-    # ==========================================
-    # VIEW 1: HOME PAGE (Project Library)
-    # ==========================================
     if st.session_state.active_project is None:
-        
-        st.markdown("""
-        <div>
-            <h1 style="margin:0; font-size: 2.5rem; color:#0000FF;">🗂️ Project Library</h1>
-            <p style="color:#18A48C; font-weight: bold; font-size: 1.1rem; margin-bottom: 1.25rem;">Select an existing review or start a new one.</p>
-        </div>
-        """, unsafe_allow_html=True)
+        # LIBRARY VIEW
+        st.markdown('<div><h1 style="margin:0; font-size: 2.5rem; color:#0000FF;">🗂️ Project Library</h1><p style="color:#18A48C; font-weight: bold; font-size: 1.1rem; margin-bottom: 1.25rem;">Select an existing review or start a new one.</p></div>', unsafe_allow_html=True)
 
         with st.container(border=True):
             c1, c2 = st.columns([4, 1])
@@ -173,7 +164,6 @@ if check_password():
                     st.error("Project already exists.")
 
         projects = list(st.session_state.projects.keys())
-        
         if not projects:
             st.info("No projects yet.")
         else:
@@ -182,7 +172,6 @@ if check_password():
                 return data.get("last_accessed", 0) if isinstance(data, dict) else 0
 
             sorted_projects = sorted(projects, key=get_timestamp, reverse=True)
-
             st.markdown("### Your Projects")
             for proj_name in sorted_projects:
                 with st.container(border=True):
@@ -193,13 +182,10 @@ if check_password():
                         with r_col2:
                             if st.button("✅", key=f"save_rename_{proj_name}", use_container_width=True):
                                 if new_name_val and new_name_val != proj_name:
-                                    if new_name_val in st.session_state.projects:
-                                        st.error("Exists!")
-                                    else:
-                                        st.session_state.projects[new_name_val] = st.session_state.projects.pop(proj_name)
-                                        save_data(st.session_state.projects)
-                                        st.session_state.renaming_project = None
-                                        st.rerun()
+                                    st.session_state.projects[new_name_val] = st.session_state.projects.pop(proj_name)
+                                    save_data(st.session_state.projects)
+                                    st.session_state.renaming_project = None
+                                    st.rerun()
                                 else:
                                     st.session_state.renaming_project = None
                                     st.rerun()
@@ -209,32 +195,26 @@ if check_password():
                                 st.rerun()
                     else:
                         col_name, col_spacer, col_edit, col_del, col_open = st.columns([6, 1.5, 0.5, 0.5, 0.5])
-                        
                         with col_name:
                             proj_data = st.session_state.projects[proj_name]
-                            paper_count = len(proj_data["papers"]) if isinstance(proj_data, dict) else len(proj_data)
-                            st.markdown(f"<div style='display:flex; flex-direction:column; justify-content:center; height:100%;'>"
-                                        f"<h3 style='margin:0; padding:0; font-size:1.1rem; color:#333;'>📍 {proj_name}</h3>"
-                                        f"<span style='font-size:0.85rem; color:#666;'>📚 {paper_count} Papers</span></div>", unsafe_allow_html=True)
-                        
+                            p_count = len(proj_data["papers"]) if isinstance(proj_data, dict) else len(proj_data)
+                            st.markdown(f"<div style='display:flex; flex-direction:column; justify-content:center; height:100%;'><h3 style='margin:0; padding:0; font-size:1.1rem; color:#333;'>📍 {proj_name}</h3><span style='font-size:0.85rem; color:#666;'>📚 {p_count} Papers</span></div>", unsafe_allow_html=True)
                         with col_edit:
                             st.markdown('<div class="icon-btn edit-btn">', unsafe_allow_html=True)
-                            if st.button("🖊️", key=f"edit_{proj_name}", help="Rename"):
+                            if st.button("🖊️", key=f"edit_{proj_name}"):
                                 st.session_state.renaming_project = proj_name
                                 st.rerun()
                             st.markdown('</div>', unsafe_allow_html=True)
-
                         with col_del:
                             st.markdown('<div class="icon-btn bin-btn">', unsafe_allow_html=True)
-                            if st.button("🗑️", key=f"del_{proj_name}", help="Delete"):
+                            if st.button("🗑️", key=f"del_{proj_name}"):
                                 del st.session_state.projects[proj_name]
                                 save_data(st.session_state.projects)
                                 st.rerun()
                             st.markdown('</div>', unsafe_allow_html=True)
-                        
                         with col_open:
                             st.markdown('<div class="icon-btn arrow-btn">', unsafe_allow_html=True)
-                            if st.button("➡️", key=f"open_{proj_name}", help="Open"):
+                            if st.button("➡️", key=f"open_{proj_name}"):
                                 st.session_state.active_project = proj_name
                                 if isinstance(st.session_state.projects[proj_name], list):
                                     st.session_state.projects[proj_name] = {"papers": st.session_state.projects[proj_name], "last_accessed": time.time()}
@@ -244,20 +224,9 @@ if check_password():
                                 st.rerun()
                             st.markdown('</div>', unsafe_allow_html=True)
 
-    # ==========================================
-    # VIEW 2: ANALYSIS DASHBOARD
-    # ==========================================
     else:
-        # 1. FIXED HEADER
-        st.markdown(f'''
-        <div class="fixed-header-bg">
-            <div class="fixed-header-text">
-                <h1>{st.session_state.active_project}</h1>
-            </div>
-        </div>
-        ''', unsafe_allow_html=True)
-
-        # 2. TARGETED UPLOAD SECTION
+        # PROJECT VIEW
+        st.markdown(f'<div class="fixed-header-bg"><div class="fixed-header-text"><h1>{st.session_state.active_project}</h1></div></div>', unsafe_allow_html=True)
         st.markdown('<div class="upload-pull-up">', unsafe_allow_html=True)
         
         llm = None
@@ -266,10 +235,8 @@ if check_password():
 
         uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
         run_review = st.button("🔬 Analyse paper", use_container_width=True)
-        
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # Ensure current project data is in correct format (dict)
         current_proj = st.session_state.projects[st.session_state.active_project]
         if isinstance(current_proj, list):
              current_proj = {"papers": current_proj, "last_accessed": time.time()}
@@ -278,36 +245,20 @@ if check_password():
         if uploaded_files and llm and run_review:
             progress_text = st.empty()
             if 'session_uploads' not in st.session_state: st.session_state.session_uploads = set()
-
-            for i, file in enumerate(uploaded_files):
+            for file in uploaded_files:
                 if file.name in st.session_state.session_uploads: continue
                 progress_text.text(f"📖 Critically reviewing: {file.name}...")
                 try:
                     reader = PdfReader(file)
                     text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
-                    prompt = f"""
-                    You are a PhD Candidate performing a Systematic Literature Review. Analyze the provided text with extreme academic rigour.
-                    Avoid excessive use of commas; provide fluid, sophisticated academic prose.
-                    Structure your response using ONLY these labels:
-                    [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
-                    Requirements: No bolding (**). No lists. Sophisticated prose.
-                    FULL TEXT: {text[:30000]}
-                    """
+                    prompt = f"PhD systematic review. sophisticated prose. Labels: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. Text: {text[:30000]}"
                     res = llm.invoke([HumanMessage(content=prompt)]).content
                     res = re.sub(r'\*', '', res)
-
                     def ext(label, next_l=None):
                         p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
                         m = re.search(p, res, re.DOTALL | re.IGNORECASE)
                         return m.group(1).strip() if m else "Not found."
-
-                    new_paper = {
-                        "#": len(current_proj["papers"]) + 1,
-                        "Title": ext("TITLE", "AUTHORS"), "Authors": ext("AUTHORS", "YEAR"), "Year": ext("YEAR", "REFERENCE"),
-                        "Reference": ext("REFERENCE", "SUMMARY"), "Summary": ext("SUMMARY", "BACKGROUND"), "Background": ext("BACKGROUND", "METHODOLOGY"),
-                        "Methodology": ext("METHODOLOGY", "CONTEXT"), "Context": ext("CONTEXT", "FINDINGS"), "Findings": ext("FINDINGS", "RELIABILITY"),
-                        "Reliability": ext("RELIABILITY")
-                    }
+                    new_paper = {"#": len(current_proj["papers"]) + 1, "Title": ext("TITLE", "AUTHORS"), "Authors": ext("AUTHORS", "YEAR"), "Year": ext("YEAR", "REFERENCE"), "Reference": ext("REFERENCE", "SUMMARY"), "Summary": ext("SUMMARY", "BACKGROUND"), "Background": ext("BACKGROUND", "METHODOLOGY"), "Methodology": ext("METHODOLOGY", "CONTEXT"), "Context": ext("CONTEXT", "FINDINGS"), "Findings": ext("FINDINGS", "RELIABILITY"), "Reliability": ext("RELIABILITY")}
                     st.session_state.projects[st.session_state.active_project]["papers"].append(new_paper)
                     st.session_state.projects[st.session_state.active_project]["last_accessed"] = time.time()
                     st.session_state.session_uploads.add(file.name)
@@ -317,42 +268,36 @@ if check_password():
             st.rerun()
 
         papers_data = st.session_state.projects[st.session_state.active_project]["papers"]
-
         if papers_data:
             t1, t2, t3 = st.tabs(["🖼️ Card Gallery", "📊 Master Table", "🧠 Synthesis"])
             with t1:
                 for r in reversed(papers_data):
                     with st.container(border=True):
                         cr, ct = st.columns([1, 12]); cr.metric("Ref", r['#']); ct.subheader(r['Title'])
-                        st.markdown(f'''<div class="metadata-block">
-                                <span class="metadata-item">🖊️ <b>Authors:</b> {r["Authors"]}</span>
-                                <span class="metadata-item">🗓️ <b>Year:</b> {r["Year"]}</span>
-                                <span class="metadata-item">🔗 <b>Full Citation:</b> {r["Reference"]}</span>
-                                </div>''', unsafe_allow_html=True)
+                        st.markdown(f'<div class="metadata-block"><span class="metadata-item">🖊️ Authors: {r["Authors"]}</span><br><span class="metadata-item">🗓️ Year: {r["Year"]}</span><br><span class="metadata-item">🔗 Full Citation: {r["Reference"]}</span></div>', unsafe_allow_html=True)
                         st.divider()
                         sec = [("📝 Summary", r["Summary"]), ("📖 Background", r["Background"]), ("⚙️ Methodology", r["Methodology"]), ("📍 Context", r["Context"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]
-                        for k, v in sec:
-                            st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
+                        for k, v in sec: st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
             with t2:
                 df = pd.DataFrame(papers_data)
                 st.dataframe(df, use_container_width=True, hide_index=True)
                 csv = df.to_csv(index=False).encode('utf-8-sig')
-                st.download_button(label="📊 Export as CSV file", data=csv, file_name=f"{st.session_state.active_project}_review.csv", mime="text/csv", use_container_width=True)
+                st.download_button(label="📊 Export CSV", data=csv, file_name=f"{st.session_state.active_project}.csv", use_container_width=True)
             with t3:
-                if len(papers_data) > 0:
-                    with st.spinner("Meta-Synthesis..."):
-                        evidence_base = ""
-                        for r in papers_data: evidence_base += f"Paper {r['#']} ({r['Year']}): Findings: {r['Findings']}. Methodology: {r['Methodology']}\n\n"
-                        synth_prompt = f"Meta-Synthesis: Use [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS]. No bolding.\n\nEvidence Base:\n{evidence_base}"
-                        raw_synth = llm.invoke([HumanMessage(content=synth_prompt)]).content
-                        clean_synth = re.sub(r'\*', '', raw_synth)
-                        def get_synth(label, next_l=None):
-                            p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
-                            m = re.search(p, clean_synth, re.DOTALL | re.IGNORECASE); return m.group(1).strip() if m else "Not found."
-                        st.markdown("### 🎯 Executive Overview"); st.write(get_synth("OVERVIEW", "PATTERNS"))
-                        st.markdown("### 📈 Cross-Study Patterns"); st.write(get_synth("PATTERNS", "CONTRADICTIONS"))
-                        st.markdown("### ⚖️ Conflicts & Contradictions"); st.write(get_synth("CONTRADICTIONS", "FUTURE_DIRECTIONS"))
-                        st.markdown("### 🚀 Future Research Directions"); st.write(get_synth("FUTURE_DIRECTIONS"))
+                # SYNTHESIS FIX: Ensure we use papers_data list
+                with st.spinner("Meta-Synthesis..."):
+                    evidence = ""
+                    for r in papers_data: evidence += f"Paper {r['#']} ({r['Year']}): Findings: {r['Findings']}. Methodology: {r['Methodology']}\n\n"
+                    synth_p = f"Synthesis of literature. Labels: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE]. No bolding. Evidence: {evidence}"
+                    raw_s = llm.invoke([HumanMessage(content=synth_p)]).content
+                    clean_s = re.sub(r'\*', '', raw_s)
+                    def gs(l, n=None):
+                        p = rf"\[{l}\]:?\s*(.*?)(?=\s*\[{n}\]|$)" if n else rf"\[{l}\]:?\s*(.*)"
+                        m = re.search(p, clean_s, re.DOTALL | re.IGNORECASE); return m.group(1).strip() if m else "Detail not found."
+                    st.markdown("### 🎯 Executive Overview"); st.write(gs("OVERVIEW", "PATTERNS"))
+                    st.markdown("### 📈 Cross-Study Patterns"); st.write(gs("PATTERNS", "CONTRADICTIONS"))
+                    st.markdown("### ⚖️ Conflicts & Contradictions"); st.write(gs("CONTRADICTIONS", "FUTURE"))
+                    st.markdown("### 🚀 Future Research Directions"); st.write(gs("FUTURE"))
 
         st.markdown('<div class="bottom-actions">', unsafe_allow_html=True)
         f1, f2, f3 = st.columns([6, 1, 1])
