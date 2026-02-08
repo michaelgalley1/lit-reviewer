@@ -5,11 +5,30 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
 import re
 import time
+import json
+import os
 
 # 1. PAGE CONFIGURATION
 st.set_page_config(page_title="Literature Review Buddy", page_icon="📚", layout="wide")
 
-# 2. STYLING (CSS)
+# 2. STORAGE LOGIC (New)
+DB_FILE = "buddy_library.json"
+
+def load_data():
+    if os.path.exists(DB_FILE):
+        try:
+            with open(DB_FILE, "r") as f:
+                data = json.load(f)
+                return data if data else {"Default Project": []}
+        except:
+            return {"Default Project": []}
+    return {"Default Project": []}
+
+def save_data(data):
+    with open(DB_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+# 3. STYLING (CSS)
 st.markdown("""
     <style>
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
@@ -44,7 +63,7 @@ st.markdown("""
     .main-content { margin-top: -75px; }
     .block-container { padding-top: 0rem !important; }
 
-    /* UNIFIED BUTTON STYLING: Applies to Analyse Paper AND the CSV Export */
+    /* UNIFIED BUTTON STYLING */
     div.stButton > button:first-child, div.stDownloadButton > button:first-child {
         width: 100% !important; 
         color: var(--buddy-green) !important;
@@ -60,6 +79,19 @@ st.markdown("""
         color: white !important;
     }
 
+    /* Sidebar Delete Button Styling */
+    .del-btn > div > button {
+        border: none !important;
+        color: #ff4b4b !important;
+        background: transparent !important;
+        padding: 0px !important; 
+        height: auto !important;
+    }
+    .del-btn > div > button:hover {
+        color: white !important;
+        background: #ff4b4b !important;
+    }
+
     .section-title { font-weight: bold; color: #0000FF; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
     .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
     
@@ -68,7 +100,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 3. AUTHENTICATION
+# 4. AUTHENTICATION
 def check_password():
     correct_password = st.secrets.get("APP_PASSWORD")
     if "password_correct" not in st.session_state:
@@ -84,17 +116,69 @@ def check_password():
         return False
     return True
 
-# 4. MAIN APPLICATION
+# 5. MAIN APPLICATION
 if check_password():
     api_key = st.secrets.get("GEMINI_API_KEY")
 
-    if 'master_data' not in st.session_state: st.session_state.master_data = [] 
+    # --- NEW: LOAD PROJECTS FROM FILE ---
+    if 'projects' not in st.session_state:
+        st.session_state.projects = load_data()
+    
+    if 'active_project' not in st.session_state:
+        # Default to the first available project
+        if st.session_state.projects:
+            st.session_state.active_project = list(st.session_state.projects.keys())[0]
+        else:
+            st.session_state.projects = {"Default Project": []}
+            st.session_state.active_project = "Default Project"
+            save_data(st.session_state.projects)
+
     if 'processed_filenames' not in st.session_state: st.session_state.processed_filenames = set() 
 
+    # --- SIDEBAR: PROJECT MANAGEMENT ---
+    with st.sidebar:
+        st.title("📁 Research Manager")
+        
+        # Create New Project
+        new_proj_name = st.text_input("New Project Name", placeholder="e.g. AI Ethics 2026")
+        if st.button("➕ Create Project"):
+            if new_proj_name and new_proj_name not in st.session_state.projects:
+                st.session_state.projects[new_proj_name] = []
+                st.session_state.active_project = new_proj_name
+                save_data(st.session_state.projects)
+                st.rerun()
+        
+        st.divider()
+        st.subheader("Your Projects")
+        
+        # Project Button List
+        for proj in list(st.session_state.projects.keys()):
+            cols = st.columns([5, 1])
+            is_active = (proj == st.session_state.active_project)
+            label = f"📍 {proj}" if is_active else proj
+            
+            # Switch Project
+            if cols[0].button(label, key=f"sel_{proj}", use_container_width=True, type="primary" if is_active else "secondary"):
+                st.session_state.active_project = proj
+                st.rerun()
+            
+            # Delete Project
+            if len(st.session_state.projects) > 1:
+                with cols[1]:
+                    st.markdown('<div class="del-btn">', unsafe_allow_html=True)
+                    if st.button("×", key=f"del_{proj}", help=f"Delete {proj}"):
+                        del st.session_state.projects[proj]
+                        if is_active:
+                            st.session_state.active_project = list(st.session_state.projects.keys())[0]
+                        save_data(st.session_state.projects)
+                        st.rerun()
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+    # --- MAIN PAGE ---
     st.markdown(f'''
         <div class="sticky-wrapper">
             <h1 style="margin:0; font-size: 1.8rem; color:#0000FF;">📚 Literature Review Buddy</h1>
-            <p style="color:#18A48C; margin-bottom:5px; font-weight: bold;">Your PhD-Level Research Assistant</p>
+            <p style="color:#18A48C; margin-bottom:5px; font-weight: bold;">Active Project: {st.session_state.active_project}</p>
         </div>
     ''', unsafe_allow_html=True)
 
@@ -102,6 +186,13 @@ if check_password():
         st.write("##") 
         st.markdown('<div class="main-content">', unsafe_allow_html=True)
         
+        # SAVE BUTTON (Permanently saves to JSON)
+        c1, c2 = st.columns([6, 1])
+        with c2:
+            if st.button("💾 Save Progress"):
+                save_data(st.session_state.projects)
+                st.toast("Project saved to disk!", icon="✅")
+
         llm = None
         if api_key:
             llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
@@ -109,8 +200,12 @@ if check_password():
         uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
         run_review = st.button("🔬 Analyse paper", use_container_width=True)
 
+        # --- ANALYSIS LOGIC ---
         if uploaded_files and llm and run_review:
             progress_text = st.empty()
+            # Check duplicates based on titles already in the ACTIVE project
+            current_project_data = st.session_state.projects[st.session_state.active_project]
+            
             for i, file in enumerate(uploaded_files):
                 if file.name in st.session_state.processed_filenames: continue
                 
@@ -141,8 +236,9 @@ if check_password():
                         m = re.search(p, res, re.DOTALL | re.IGNORECASE)
                         return m.group(1).strip() if m else "Not found."
 
-                    st.session_state.master_data.append({
-                        "#": len(st.session_state.master_data) + 1,
+                    # Append to the ACTIVE project list
+                    st.session_state.projects[st.session_state.active_project].append({
+                        "#": len(st.session_state.projects[st.session_state.active_project]) + 1,
                         "Title": ext("TITLE", "AUTHORS"),
                         "Authors": ext("AUTHORS", "YEAR"),
                         "Year": ext("YEAR", "REFERENCE"),
@@ -157,12 +253,18 @@ if check_password():
                     st.session_state.processed_filenames.add(file.name)
                 except Exception as e: st.error(f"Error on {file.name}: {e}")
             progress_text.empty()
+            # Auto-save after analysis
+            save_data(st.session_state.projects)
 
-        if st.session_state.master_data:
+        # --- DISPLAY LOGIC ---
+        # Get data for the ACTIVE project
+        active_data = st.session_state.projects[st.session_state.active_project]
+
+        if active_data:
             t1, t2, t3 = st.tabs(["🖼️ Card Gallery", "📊 Master Table", "🧠 Synthesis"])
             
             with t1:
-                for r in reversed(st.session_state.master_data):
+                for r in reversed(active_data):
                     with st.container(border=True):
                         cr, ct = st.columns([1, 12]); cr.metric("Ref", r['#']); ct.subheader(r['Title'])
                         st.markdown(f'''
@@ -178,7 +280,7 @@ if check_password():
                             st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
             
             with t2:
-                df = pd.DataFrame(st.session_state.master_data)
+                df = pd.DataFrame(active_data)
                 st.dataframe(df, use_container_width=True, hide_index=True)
                 
                 # --- FULL WIDTH EXPORT BUTTON ---
@@ -186,16 +288,16 @@ if check_password():
                 st.download_button(
                     label="📊 Export as CSV file",
                     data=csv,
-                    file_name="lit_review_buddy_master_table.csv",
+                    file_name=f"{st.session_state.active_project}_review.csv",
                     mime="text/csv",
                     use_container_width=True
                 )
             
             with t3:
-                if len(st.session_state.master_data) > 0:
+                if len(active_data) > 0:
                     with st.spinner("Performing meta-synthesis..."):
                         evidence_base = ""
-                        for r in st.session_state.master_data:
+                        for r in active_data:
                             evidence_base += f"Paper {r['#']} ({r['Year']}): Findings: {r['Findings']}. Methodology: {r['Methodology']}\n\n"
 
                         synth_prompt = f"Meta-Synthesis: Analyze theoretical contributions and trends. Use [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS]. Academic prose, no bolding.\n\nEvidence Base:\n{evidence_base}"
