@@ -73,7 +73,7 @@ div[data-testid="stButton"] button:hover {
 }
 
 /* -------------------------
-   CARD DELETE BUTTON (Expansion Fix)
+   CARD DELETE BUTTON (Expansion & Alignment Fix)
    ------------------------- */
 .card-del-container {
     display: flex;
@@ -85,14 +85,15 @@ div[data-testid="stButton"] button:hover {
     color: #ff4b4b !important;
     border: 1px solid #ff4b4b !important;
     background: transparent !important;
-    font-size: 0.8rem !important;
-    height: 32px !important;
-    padding: 0 12px !important;
-    /* FORCE SINGLE LINE */
+    font-size: 0.85rem !important;
+    height: 34px !important;
+    padding: 0 15px !important;
+    
+    /* FORCE SINGLE LINE & WIDTH */
     white-space: nowrap !important;
+    min-width: 140px !important; 
     width: auto !important;
-    min-width: max-content !important;
-    display: inline-block !important;
+    display: block !important;
 }
 
 /* -------------------------
@@ -167,7 +168,9 @@ if check_password():
         st.session_state.renaming_project = None
 
     if st.session_state.active_project is None:
+        # LIBRARY VIEW
         st.markdown('<div><h1 style="margin:0; font-size: 2.5rem; color:#0000FF;">🗂️ Project Library</h1><p style="color:#18A48C; font-weight: bold; font-size: 1.1rem; margin-bottom: 1.25rem;">Select an existing review or start a new one.</p></div>', unsafe_allow_html=True)
+
         with st.container(border=True):
             c1, c2 = st.columns([4, 1])
             new_name = c1.text_input("New Project Name", placeholder="e.g. AI Ethics 2026", label_visibility="collapsed")
@@ -279,8 +282,8 @@ if check_password():
                 for idx, r in enumerate(reversed(papers_data)):
                     real_idx = len(papers_data) - 1 - idx
                     with st.container(border=True):
-                        # Increased column ratio for delete button to 1.5
-                        col_metric, col_title, col_del = st.columns([1, 11, 1.5])
+                        # Increased column for delete to 2.5
+                        col_metric, col_title, col_del = st.columns([1, 10, 2.5])
                         with col_metric: st.metric("Ref", r['#'])
                         with col_title: st.subheader(r['Title'])
                         with col_del:
