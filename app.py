@@ -33,7 +33,7 @@ st.markdown("""
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
     :root { --buddy-green: #18A48C; --buddy-blue: #0000FF; }
     
-    /* REMOVE ALL DEFAULT TOP PADDING to kill the gap */
+    /* REMOVE ALL DEFAULT TOP PADDING */
     [data-testid="block-container"] {
         padding-top: 0rem !important;
         margin-top: 0rem !important;
@@ -51,9 +51,9 @@ st.markdown("""
         border-bottom: 2px solid #f0f2f6; 
     }
     
-    /* Main Content - Pulled up tight against the header */
+    /* Main Content */
     .main-content { 
-        margin-top: 90px; /* Adjust based on header height to prevent overlap */
+        margin-top: 100px; 
     }
     
     /* General Button Styling */
@@ -64,11 +64,8 @@ st.markdown("""
     
     /* SIDEBAR SPACING */
     [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
-        gap: 0.15rem !important; /* Tight spacing for project list */
+        gap: 0.15rem !important;
     }
-
-    /* SPECIFIC FIX: 0.2rem gap between Input and Create Button in Sidebar */
-    /* Target the container of the text input to reduce its bottom margin */
     [data-testid="stSidebar"] [data-testid="stVerticalBlock"] > div:has(input) {
         margin-bottom: 0.2rem !important;
     }
@@ -86,14 +83,18 @@ st.markdown("""
         background: transparent !important;
     }
 
-    /* Save Button (Emoji Only) Styling */
+    /* Save Button Alignment (Right) */
+    .save-btn-container {
+        display: flex;
+        justify-content: flex-end; /* Pushes content to the right */
+        width: 100%;
+    }
     .save-btn-container button {
         border: none !important;
         font-size: 1.5rem !important;
         padding: 0px !important;
         background: transparent !important;
         width: auto !important;
-        float: right;
     }
     .save-btn-container button:hover {
         background: transparent !important;
@@ -129,11 +130,7 @@ if check_password():
     # --- SIDEBAR ---
     with st.sidebar:
         st.title("📁 Research Manager")
-        
-        # New Project Input
         new_proj_name = st.text_input("Name for New Review", placeholder="e.g. AI Ethics 2026", label_visibility="collapsed")
-        
-        # Create Button
         if st.button("➕ Create Project"):
             if new_proj_name and new_proj_name not in st.session_state.projects:
                 st.session_state.projects[new_proj_name] = []
@@ -143,18 +140,13 @@ if check_password():
         
         st.divider()
         st.subheader("Your Projects")
-        
         for proj in list(st.session_state.projects.keys()):
             cols = st.columns([4, 1])
             is_active = (proj == st.session_state.active_project)
             label = f"📍 {proj}" if is_active else proj
-            
-            # Project Selection Button
             if cols[0].button(label, key=f"sel_{proj}", use_container_width=True, type="primary" if is_active else "secondary"):
                 st.session_state.active_project = proj
                 st.rerun()
-            
-            # Delete Button
             if len(st.session_state.projects) > 1:
                 st.markdown('<div class="del-btn">', unsafe_allow_html=True)
                 if cols[1].button("×", key=f"del_{proj}", help=f"Delete {proj}"):
@@ -165,14 +157,13 @@ if check_password():
                     st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- MAIN UI HEADER ---
+    # --- HEADER ---
     st.markdown('<div class="sticky-wrapper">', unsafe_allow_html=True)
     head_col1, head_col2 = st.columns([4, 1])
     with head_col1:
         st.markdown(f'<h1 style="margin:0; font-size: 1.8rem; color:#0000FF;">📚 {st.session_state.active_project}</h1>', unsafe_allow_html=True)
         st.markdown('<p style="color:#18A48C; margin:0; font-weight: bold; font-size: 0.9rem;">PhD-Level Analysis Mode</p>', unsafe_allow_html=True)
     with head_col2:
-        # Save Button (Emoji Only)
         st.markdown('<div class="save-btn-container">', unsafe_allow_html=True)
         if st.button("💾", help="Save Progress"):
             save_data(st.session_state.projects)
@@ -181,53 +172,54 @@ if check_password():
     st.markdown('</div>', unsafe_allow_html=True)
 
     # --- MAIN CONTENT ---
-    # No extra spacers, just the content div
     st.markdown('<div class="main-content">', unsafe_allow_html=True)
     
     api_key = st.secrets.get("GEMINI_API_KEY")
     llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1) if api_key else None
 
-    uploaded_files = st.file_uploader("Upload papers (PDF)", type="pdf", accept_multiple_files=True)
-    run_review = st.button("🔬 Analyse paper", use_container_width=True)
+    # --- UPLOAD SECTION (IN DROPDOWN) ---
+    with st.expander("Upload and Analyse Papers", expanded=True):
+        uploaded_files = st.file_uploader("Upload papers (PDF)", type="pdf", accept_multiple_files=True)
+        run_review = st.button("🔬 Analyse paper", use_container_width=True)
 
-    if uploaded_files and llm and run_review:
-        progress_text = st.empty()
-        existing_titles = {paper['Title'].lower() for paper in st.session_state.projects[st.session_state.active_project]}
-        
-        for file in uploaded_files:
-            progress_text.text(f"📖 Reviewing: {file.name}...")
-            try:
-                reader = PdfReader(file) 
-                text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
-                prompt = f"Analyze as PhD Candidate: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. Sophisticated prose, no bolding. TEXT: {text[:30000]}"
-                res = llm.invoke([HumanMessage(content=prompt)]).content
-                res = re.sub(r'\*', '', res) 
+        if uploaded_files and llm and run_review:
+            progress_text = st.empty()
+            existing_titles = {paper['Title'].lower() for paper in st.session_state.projects[st.session_state.active_project]}
+            
+            for file in uploaded_files:
+                progress_text.text(f"📖 Reviewing: {file.name}...")
+                try:
+                    reader = PdfReader(file) 
+                    text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
+                    prompt = f"Analyze as PhD Candidate: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. Sophisticated prose, no bolding. TEXT: {text[:30000]}"
+                    res = llm.invoke([HumanMessage(content=prompt)]).content
+                    res = re.sub(r'\*', '', res) 
 
-                def ext(label, next_l=None):
-                    p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
-                    m = re.search(p, res, re.DOTALL | re.IGNORECASE)
-                    return m.group(1).strip() if m else "Not found."
+                    def ext(label, next_l=None):
+                        p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
+                        m = re.search(p, res, re.DOTALL | re.IGNORECASE)
+                        return m.group(1).strip() if m else "Not found."
 
-                title = ext("TITLE", "AUTHORS")
-                if title.lower() not in existing_titles:
-                    st.session_state.projects[st.session_state.active_project].append({
-                        "#": len(st.session_state.projects[st.session_state.active_project]) + 1,
-                        "Title": title,
-                        "Authors": ext("AUTHORS", "YEAR"),
-                        "Year": ext("YEAR", "REFERENCE"),
-                        "Reference": ext("REFERENCE", "SUMMARY"),
-                        "Summary": ext("SUMMARY", "BACKGROUND"),
-                        "Background": ext("BACKGROUND", "METHODOLOGY"),
-                        "Methodology": ext("METHODOLOGY", "CONTEXT"),
-                        "Context": ext("CONTEXT", "FINDINGS"),
-                        "Findings": ext("FINDINGS", "RELIABILITY"),
-                        "Reliability": ext("RELIABILITY")
-                    })
-                    existing_titles.add(title.lower())
-            except Exception as e: st.error(f"Error: {e}")
-        progress_text.empty()
-        save_data(st.session_state.projects)
-        st.rerun()
+                    title = ext("TITLE", "AUTHORS")
+                    if title.lower() not in existing_titles:
+                        st.session_state.projects[st.session_state.active_project].append({
+                            "#": len(st.session_state.projects[st.session_state.active_project]) + 1,
+                            "Title": title,
+                            "Authors": ext("AUTHORS", "YEAR"),
+                            "Year": ext("YEAR", "REFERENCE"),
+                            "Reference": ext("REFERENCE", "SUMMARY"),
+                            "Summary": ext("SUMMARY", "BACKGROUND"),
+                            "Background": ext("BACKGROUND", "METHODOLOGY"),
+                            "Methodology": ext("METHODOLOGY", "CONTEXT"),
+                            "Context": ext("CONTEXT", "FINDINGS"),
+                            "Findings": ext("FINDINGS", "RELIABILITY"),
+                            "Reliability": ext("RELIABILITY")
+                        })
+                        existing_titles.add(title.lower())
+                except Exception as e: st.error(f"Error: {e}")
+            progress_text.empty()
+            save_data(st.session_state.projects)
+            st.rerun()
 
     current_data = st.session_state.projects[st.session_state.active_project]
     
