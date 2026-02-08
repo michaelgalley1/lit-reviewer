@@ -50,42 +50,39 @@ st.markdown("""
 }
 
 /* -------------------------
-   FINAL CENTERING OVERRIDE
+   ICON BUTTONS (Library Page)
    ------------------------- */
-/* Targeted Icon Button Styling */
-.icon-btn div[data-testid="stButton"] {
-    display: flex;
-    justify-content: center;
-}
-
 .icon-btn div[data-testid="stButton"] button {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     height: 38px !important;
     width: 38px !important;
-    min-height: 38px !important;
-    min-width: 38px !important;
     padding: 0 !important;
-    margin: 0 !important;
     border: none !important;
     background: transparent !important;
-}
-
-/* Deep override of the Streamlit label inside the button */
-.icon-btn div[data-testid="stButton"] button div[data-testid="stMarkdownContainer"] p {
-    font-size: 1.2rem !important; /* Slightly smaller for room */
-    line-height: 1 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    text-align: center !important;
-    display: block !important;
-    width: 100% !important;
 }
 
 .icon-btn button:hover {
     background: #f0f2f6 !important;
     border-radius: 5px !important;
+}
+
+/* -------------------------
+   CARD DELETE BUTTON (Wider)
+   ------------------------- */
+.card-del-container div[data-testid="stButton"] button {
+    color: #ff4b4b !important;
+    border: 1px solid #ff4b4b !important;
+    background: transparent !important;
+    font-size: 0.8rem !important;
+    height: 32px !important;
+    padding: 0 10px !important;
+}
+
+.card-del-container div[data-testid="stButton"] button:hover {
+    background: #ff4b4b !important;
+    color: white !important;
 }
 
 .bin-btn button:hover { color: red !important; background: #ffe6e6 !important; }
@@ -126,17 +123,12 @@ st.markdown("""
 [data-testid="stTextInput"] div[data-baseweb="input"] { border: 0.06rem solid #d3d3d3 !important; }
 [data-testid="stTextInput"] div[data-baseweb="input"]:focus-within { border: 0.125rem solid var(--buddy-green) !important; }
 
-/* Main Action Buttons (Save/Library) */
+/* Main Action Buttons */
 div[data-testid="stButton"] > button:not([kind="secondary"]) {
     border: 0.06rem solid var(--buddy-green) !important;
     color: var(--buddy-green) !important;
     background: transparent !important;
     font-weight: bold !important;
-    padding: 0.4rem 1rem !important;
-}
-div[data-testid="stButton"] > button:not([kind="secondary"]):hover {
-    background: var(--buddy-green) !important;
-    color: white !important;
 }
 
 .section-title { font-weight: bold; color: #0000FF; margin-top: 1rem; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 0.06rem solid #eee; }
@@ -296,12 +288,14 @@ if check_password():
                 for idx, r in enumerate(reversed(papers_data)):
                     real_idx = len(papers_data) - 1 - idx
                     with st.container(border=True):
-                        cr, ct, cdel = st.columns([1, 12, 0.5])
+                        # Layout: Metric | Title | Delete Button
+                        cr, ct, cdel = st.columns([1, 10, 2])
                         cr.metric("Ref", r['#'])
                         ct.subheader(r['Title'])
+                        
                         with cdel:
-                            st.markdown('<div class="icon-btn bin-btn">', unsafe_allow_html=True)
-                            if st.button("🗑️", key=f"del_paper_{real_idx}"):
+                            st.markdown('<div class="card-del-container">', unsafe_allow_html=True)
+                            if st.button("🗑️ Delete Paper", key=f"del_paper_{real_idx}"):
                                 st.session_state.projects[st.session_state.active_project]["papers"].pop(real_idx)
                                 for i, p in enumerate(st.session_state.projects[st.session_state.active_project]["papers"]):
                                     p["#"] = i + 1
@@ -342,3 +336,4 @@ if check_password():
             if st.button("🏠 Library", key="final_lib", use_container_width=True):
                 save_data(st.session_state.projects); st.session_state.active_project = None; st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
+    
