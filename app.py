@@ -271,9 +271,27 @@ if check_password():
         if papers_data:
             t1, t2, t3 = st.tabs(["🖼️ Card Gallery", "📊 Master Table", "🧠 Synthesis"])
             with t1:
-                for r in reversed(papers_data):
+                # Iterate with original indices to handle deletion correctly
+                for idx, r in enumerate(reversed(papers_data)):
+                    # Correct index calculation for reversed list
+                    real_idx = len(papers_data) - 1 - idx
+                    
                     with st.container(border=True):
-                        cr, ct = st.columns([1, 12]); cr.metric("Ref", r['#']); ct.subheader(r['Title'])
+                        cr, ct, cdel = st.columns([1, 12, 0.5])
+                        cr.metric("Ref", r['#'])
+                        ct.subheader(r['Title'])
+                        
+                        with cdel:
+                            st.markdown('<div class="icon-btn bin-btn">', unsafe_allow_html=True)
+                            if st.button("🗑️", key=f"del_paper_{real_idx}", help="Wipe paper from memory"):
+                                st.session_state.projects[st.session_state.active_project]["papers"].pop(real_idx)
+                                # Re-index Ref numbers
+                                for i, p in enumerate(st.session_state.projects[st.session_state.active_project]["papers"]):
+                                    p["#"] = i + 1
+                                save_data(st.session_state.projects)
+                                st.rerun()
+                            st.markdown('</div>', unsafe_allow_html=True)
+
                         st.markdown(f'<div class="metadata-block"><span class="metadata-item">🖊️ Authors: {r["Authors"]}</span><br><span class="metadata-item">🗓️ Year: {r["Year"]}</span><br><span class="metadata-item">🔗 Full Citation: {r["Reference"]}</span></div>', unsafe_allow_html=True)
                         st.divider()
                         sec = [("📝 Summary", r["Summary"]), ("📖 Background", r["Background"]), ("⚙️ Methodology", r["Methodology"]), ("📍 Context", r["Context"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]
@@ -284,7 +302,6 @@ if check_password():
                 csv = df.to_csv(index=False).encode('utf-8-sig')
                 st.download_button(label="📊 Export CSV", data=csv, file_name=f"{st.session_state.active_project}.csv", use_container_width=True)
             with t3:
-                # SYNTHESIS FIX: Ensure we use papers_data list
                 with st.spinner("Meta-Synthesis..."):
                     evidence = ""
                     for r in papers_data: evidence += f"Paper {r['#']} ({r['Year']}): Findings: {r['Findings']}. Methodology: {r['Methodology']}\n\n"
