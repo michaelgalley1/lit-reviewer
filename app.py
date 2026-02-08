@@ -15,8 +15,10 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 def load_full_library():
     try:
-        # ttl=0 ensures we don't use old 'cached' data
+        # ttl=0 ensures we bypass cache to get real-time Google Sheet data
         df = conn.read(ttl=0)
+        
+        # Safety Check: If sheet is empty or headers are missing
         if df is None or df.empty or 'Project' not in df.columns: 
             return {}
         
@@ -28,7 +30,7 @@ def load_full_library():
             if proj not in library:
                 library[proj] = {"papers": [], "last_accessed": row.get('LastAccessed', 0)}
             
-            # Only add paper data if the Title exists in this row
+            # Add paper if Title exists
             if 'Title' in row and pd.notna(row['Title']):
                 library[proj]["papers"].append({
                     "#": row.get('#'), "Title": row.get('Title'), "Authors": row.get('Authors'),
@@ -38,18 +40,17 @@ def load_full_library():
                 })
         return library
     except Exception as e:
-        # If there's an error (like missing columns), return empty so app doesn't crash
+        # Silent fail returns empty dict so UI can still load
         return {}
 
 def save_full_library(library):
     flat_data = []
     for proj_name, content in library.items():
-        if not content["papers"]:
-            # Ensure we save the project even if it's empty
-            flat_data.append({"Project": proj_name, "LastAccessed": content["last_accessed"]})
+        if not content.get("papers"):
+            flat_data.append({"Project": proj_name, "LastAccessed": content.get("last_accessed", time.time())})
         else:
             for paper in content["papers"]:
-                row = {"Project": proj_name, "LastAccessed": content["last_accessed"]}
+                row = {"Project": proj_name, "LastAccessed": content.get("last_accessed", time.time())}
                 row.update(paper)
                 flat_data.append(row)
     
@@ -93,7 +94,6 @@ def check_password():
 
 # 5. MAIN LOGIC
 if check_password():
-    # Attempt to pull API key from secrets first
     api_key = st.secrets.get("GEMINI_API_KEY", "AIzaSyCs-N57rUlOl1J8LtwT54b6kLgYnAhmuJg")
 
     if 'projects' not in st.session_state:
@@ -103,6 +103,7 @@ if check_password():
         st.session_state.active_project = None 
 
     if st.session_state.active_project is None:
+        # LIBRARY VIEW
         st.markdown('<div><h1 style="color:#0000FF;">🗂️ Project Library</h1><p style="color:#18A48C; font-weight: bold;">Permanent Cloud Storage Active.</p></div>', unsafe_allow_html=True)
 
         with st.container(border=True):
@@ -192,7 +193,7 @@ if check_password():
                     st.session_state.projects[st.session_state.active_project]["last_accessed"] = time.time()
                     st.session_state.session_uploads.add(file.name)
                     save_full_library(st.session_state.projects)
-                except Exception as e: st.error(f"Error: {e}")
+                except Exception as e: st.error(f"Error during analysis: {e}")
             progress_text.empty()
             st.rerun()
 
