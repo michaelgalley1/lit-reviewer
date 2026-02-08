@@ -73,12 +73,18 @@ div[data-testid="stButton"] button:hover {
 }
 
 /* -------------------------
-   CARD DELETE BUTTON (Expansion & Alignment Fix)
+   CARD DELETE BUTTON (Pinned to Right Edge)
    ------------------------- */
 .card-del-container {
+    display: flex !important;
+    justify-content: flex-end !important;
+    width: 100% !important;
+    margin-right: 0 !important;
+}
+
+.card-del-container div[data-testid="stButton"] {
     display: flex;
     justify-content: flex-end;
-    width: 100%;
 }
 
 .card-del-container div[data-testid="stButton"] button {
@@ -88,12 +94,10 @@ div[data-testid="stButton"] button:hover {
     font-size: 0.85rem !important;
     height: 34px !important;
     padding: 0 15px !important;
-    
-    /* FORCE SINGLE LINE & WIDTH */
     white-space: nowrap !important;
     min-width: 140px !important; 
     width: auto !important;
-    display: block !important;
+    margin-right: 0 !important;
 }
 
 /* -------------------------
@@ -282,11 +286,12 @@ if check_password():
                 for idx, r in enumerate(reversed(papers_data)):
                     real_idx = len(papers_data) - 1 - idx
                     with st.container(border=True):
-                        # Increased column for delete to 2.5
-                        col_metric, col_title, col_del = st.columns([1, 10, 2.5])
+                        # Clean column logic
+                        col_metric, col_title, col_del = st.columns([1, 10, 2])
                         with col_metric: st.metric("Ref", r['#'])
                         with col_title: st.subheader(r['Title'])
                         with col_del:
+                            # Flex container forces button to right of column
                             st.markdown('<div class="card-del-container">', unsafe_allow_html=True)
                             if st.button("🗑️ Delete Paper", key=f"del_paper_{real_idx}"):
                                 st.session_state.projects[st.session_state.active_project]["papers"].pop(real_idx)
