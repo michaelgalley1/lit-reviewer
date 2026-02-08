@@ -49,18 +49,12 @@ st.markdown("""
     padding-bottom: 2rem !important;
 }
 
-/* -------------------------
-   GLOBAL HOVER LOGIC
-   ------------------------- */
 div[data-testid="stButton"] button:hover {
     background-color: var(--buddy-green) !important;
     color: white !important;
     border-color: var(--buddy-green) !important;
 }
 
-/* -------------------------
-   ICON BUTTONS (Library Page)
-   ------------------------- */
 .icon-btn div[data-testid="stButton"] button {
     display: flex !important;
     align-items: center !important;
@@ -72,19 +66,10 @@ div[data-testid="stButton"] button:hover {
     background: transparent !important;
 }
 
-/* -------------------------
-   CARD DELETE BUTTON (Pinned to Right Edge)
-   ------------------------- */
 .card-del-container {
     display: flex !important;
     justify-content: flex-end !important;
     width: 100% !important;
-    margin-right: 0 !important;
-}
-
-.card-del-container div[data-testid="stButton"] {
-    display: flex;
-    justify-content: flex-end;
 }
 
 .card-del-container div[data-testid="stButton"] button {
@@ -94,15 +79,9 @@ div[data-testid="stButton"] button:hover {
     font-size: 0.85rem !important;
     height: 34px !important;
     padding: 0 15px !important;
-    white-space: nowrap !important;
     min-width: 140px !important; 
-    width: auto !important;
-    margin-right: 0 !important;
 }
 
-/* -------------------------
-   PROJECT PAGE STYLES
-   ------------------------- */
 .fixed-header-bg {
     position: fixed;
     top: 0;
@@ -126,13 +105,10 @@ div[data-testid="stButton"] button:hover {
 
 .bottom-actions {
     margin-top: 1rem;      
-    padding-top: 1rem;     
+    padding-top: 1rem;      
     padding-bottom: 2rem;
     border-top: 0.06rem solid #eee;
 }
-
-[data-testid="stTextInput"] div[data-baseweb="input"] { border: 0.06rem solid #d3d3d3 !important; }
-[data-testid="stTextInput"] div[data-baseweb="input"]:focus-within { border: 0.125rem solid var(--buddy-green) !important; }
 
 div[data-testid="stButton"] > button:not([kind="secondary"]) {
     border: 0.06rem solid var(--buddy-green) !important;
@@ -189,10 +165,7 @@ if check_password():
 
         projects = list(st.session_state.projects.keys())
         if projects:
-            def get_timestamp(proj_key):
-                data = st.session_state.projects[proj_key]
-                return data.get("last_accessed", 0) if isinstance(data, dict) else 0
-            sorted_projects = sorted(projects, key=get_timestamp, reverse=True)
+            sorted_projects = sorted(projects, key=lambda k: st.session_state.projects[k].get("last_accessed", 0) if isinstance(st.session_state.projects[k], dict) else 0, reverse=True)
             st.markdown("### Your Projects")
             for proj_name in sorted_projects:
                 with st.container(border=True):
@@ -216,20 +189,20 @@ if check_password():
                             p_count = len(proj_data["papers"]) if isinstance(proj_data, dict) else len(proj_data)
                             st.markdown(f"<div style='display:flex; flex-direction:column; justify-content:center; height:100%;'><h3 style='margin:0; padding:0; font-size:1.1rem; color:#333;'>📍 {proj_name}</h3><span style='font-size:0.85rem; color:#666;'>📚 {p_count} Papers</span></div>", unsafe_allow_html=True)
                         with col_edit:
-                            st.markdown('<div class="icon-btn edit-btn">', unsafe_allow_html=True)
+                            st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
                             if st.button("🖊️", key=f"edit_{proj_name}"):
                                 st.session_state.renaming_project = proj_name
                                 st.rerun()
                             st.markdown('</div>', unsafe_allow_html=True)
                         with col_del:
-                            st.markdown('<div class="icon-btn bin-btn">', unsafe_allow_html=True)
+                            st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
                             if st.button("🗑️", key=f"del_{proj_name}"):
                                 del st.session_state.projects[proj_name]
                                 save_data(st.session_state.projects)
                                 st.rerun()
                             st.markdown('</div>', unsafe_allow_html=True)
                         with col_open:
-                            st.markdown('<div class="icon-btn arrow-btn">', unsafe_allow_html=True)
+                            st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
                             if st.button("➡️", key=f"open_{proj_name}"):
                                 st.session_state.active_project = proj_name
                                 if isinstance(st.session_state.projects[proj_name], list):
@@ -241,6 +214,7 @@ if check_password():
                             st.markdown('</div>', unsafe_allow_html=True)
 
     else:
+        # PROJECT VIEW
         st.markdown(f'<div class="fixed-header-bg"><div class="fixed-header-text"><h1>{st.session_state.active_project}</h1></div></div>', unsafe_allow_html=True)
         st.markdown('<div class="upload-pull-up">', unsafe_allow_html=True)
         llm = None
@@ -270,7 +244,20 @@ if check_password():
                         p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
                         m = re.search(p, res, re.DOTALL | re.IGNORECASE)
                         return m.group(1).strip() if m else "Not found."
-                    new_paper = {"#": len(current_proj["papers"]) + 1, "Title": ext("TITLE", "AUTHORS"), "Authors": ext("AUTHORS", "YEAR"), "Year": ext("YEAR", "REFERENCE"), "Reference": ext("REFERENCE", "SUMMARY"), "Summary": ext("SUMMARY", "BACKGROUND"), "Background": ext("BACKGROUND", "METHODOLOGY"), "Methodology": ext("METHODOLOGY", "CONTEXT"), "Context": ext("CONTEXT", "FINDINGS"), "Findings": ext("FINDINGS", "RELIABILITY"), "Reliability": ext("RELIABILITY")}
+                    
+                    new_paper = {
+                        "#": len(current_proj["papers"]) + 1, 
+                        "Title": ext("TITLE", "AUTHORS"), 
+                        "Authors": ext("AUTHORS", "YEAR"), 
+                        "Year": ext("YEAR", "REFERENCE"), 
+                        "Reference": ext("REFERENCE", "SUMMARY"), 
+                        "Summary": ext("SUMMARY", "BACKGROUND"), 
+                        "Background": ext("BACKGROUND", "METHODOLOGY"), 
+                        "Methodology": ext("METHODOLOGY", "CONTEXT"), 
+                        "Context": ext("CONTEXT", "FINDINGS"), 
+                        "Findings": ext("FINDINGS", "RELIABILITY"), 
+                        "Reliability": ext("RELIABILITY")
+                    }
                     st.session_state.projects[st.session_state.active_project]["papers"].append(new_paper)
                     st.session_state.projects[st.session_state.active_project]["last_accessed"] = time.time()
                     st.session_state.session_uploads.add(file.name)
@@ -286,32 +273,32 @@ if check_password():
                 for idx, r in enumerate(reversed(papers_data)):
                     real_idx = len(papers_data) - 1 - idx
                     with st.container(border=True):
-                        # Clean column logic
                         col_metric, col_title, col_del = st.columns([1, 10, 2])
-                        with col_metric: st.metric("Ref", r['#'])
-                        with col_title: st.subheader(r['Title'])
+                        with col_metric: 
+                            # FIXED: Use '#' key instead of 'Ref'
+                            st.metric("Ref", r.get('#', real_idx + 1))
+                        with col_title: st.subheader(r.get('Title', 'Untitled'))
                         with col_del:
-                            # Flex container forces button to right of column
                             st.markdown('<div class="card-del-container">', unsafe_allow_html=True)
                             if st.button("🗑️ Delete Paper", key=f"del_paper_{real_idx}"):
                                 st.session_state.projects[st.session_state.active_project]["papers"].pop(real_idx)
+                                # Re-index
                                 for i, p in enumerate(st.session_state.projects[st.session_state.active_project]["papers"]): p["#"] = i + 1
                                 save_data(st.session_state.projects)
                                 st.rerun()
                             st.markdown('</div>', unsafe_allow_html=True)
-                        st.markdown(f'<div class="metadata-block"><span class="metadata-item">🖊️ Authors: {r["Authors"]}</span><br><span class="metadata-item">🗓️ Year: {r["Year"]}</span><br><span class="metadata-item">🔗 Full Citation: {r["Reference"]}</span></div>', unsafe_allow_html=True)
+                        
+                        st.markdown(f'<div>🖊️ Authors: {r.get("Authors", "N/A")}<br>🗓️ Year: {r.get("Year", "N/A")}<br>🔗 Full Citation: {r.get("Reference", "N/A")}</div>', unsafe_allow_html=True)
                         st.divider()
-                        sec = [("📝 Summary", r["Summary"]), ("📖 Background", r["Background"]), ("⚙️ Methodology", r["Methodology"]), ("📍 Context", r["Context"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]
+                        sec = [("📝 Summary", r.get("Summary", "")), ("📖 Background", r.get("Background", "")), ("⚙️ Methodology", r.get("Methodology", "")), ("📍 Context", r.get("Context", "")), ("💡 Findings", r.get("Findings", "")), ("🛡️ Reliability", r.get("Reliability", ""))]
                         for k, v in sec: st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
             with t2:
                 df = pd.DataFrame(papers_data)
                 st.dataframe(df, use_container_width=True, hide_index=True)
-                csv = df.to_csv(index=False).encode('utf-8-sig')
-                st.download_button(label="📊 Export CSV", data=csv, file_name=f"{st.session_state.active_project}.csv", use_container_width=True)
+                st.download_button(label="📊 Export CSV", data=df.to_csv(index=False).encode('utf-8-sig'), file_name=f"{st.session_state.active_project}.csv", use_container_width=True)
             with t3:
                 with st.spinner("Meta-Synthesis..."):
-                    evidence = ""
-                    for r in papers_data: evidence += f"Paper {r['#']} ({r['Year']}): Findings: {r['Findings']}. Methodology: {r['Methodology']}\n\n"
+                    evidence = "".join([f"Paper {r.get('#')} ({r.get('Year')}): Findings: {r.get('Findings')}\n" for r in papers_data])
                     synth_p = f"Synthesis of literature. Labels: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE]. Evidence: {evidence}"
                     raw_s = llm.invoke([HumanMessage(content=synth_p)]).content
                     clean_s = re.sub(r'\*', '', raw_s)
