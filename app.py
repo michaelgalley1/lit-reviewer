@@ -27,37 +27,41 @@ def save_data(data):
     with open(DB_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
-# 3. STYLING - UPDATED FOR PERFECT ALIGNMENT
+# 3. STYLING - FORCED VERTICAL AND HORIZONTAL ALIGNMENT
 st.markdown("""
     <style>
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
     :root { --buddy-green: #18A48C; --buddy-blue: #0000FF; }
     
+    /* Sticky Header Logic */
     .sticky-wrapper { position: fixed; top: 0; left: 0; width: 100%; background-color: white; z-index: 1000; padding: 10px 50px 0px 50px; border-bottom: 2px solid #f0f2f6; }
     .main-content { margin-top: -30px; }
     
-    /* Standard Buttons */
-    div.stButton > button:first-child, div.stDownloadButton > button:first-child {
-        width: 100% !important; color: var(--buddy-green) !important; border: 1px solid var(--buddy-green) !important; font-weight: bold !important; background-color: transparent !important;
-    }
-    div.stButton > button:hover, div.stDownloadButton > button:hover { background-color: var(--buddy-green) !important; color: white !important; }
-    
-    /* Sidebar Row Alignment */
-    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap: 0.5rem !important; }
-    
-    /* Force columns to align items to the center vertically */
-    [data-testid="column"] {
+    /* Global Sidebar Column Alignment */
+    [data-testid="stSidebar"] [data-testid="column"] {
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
+        height: 45px !important; /* Forces consistent row height */
     }
     
-    /* Ensure the Project Name column is left-aligned */
-    [data-testid="column"]:nth-of-type(1) {
+    /* Left-align Project Name Column */
+    [data-testid="stSidebar"] [data-testid="column"]:nth-of-type(1) {
         justify-content: flex-start !important;
     }
 
-    /* INVISIBLE ICON BUTTONS */
+    /* Right-align the Bin/Save Column */
+    [data-testid="stSidebar"] [data-testid="column"]:nth-of-type(3) {
+        justify-content: flex-end !important;
+    }
+
+    /* Standard Action Buttons (Main UI) */
+    div.stButton > button:first-child {
+        width: 100% !important; color: var(--buddy-green) !important; border: 1px solid var(--buddy-green) !important; font-weight: bold !important; background-color: transparent !important;
+    }
+    div.stButton > button:hover { background-color: var(--buddy-green) !important; color: white !important; }
+
+    /* ICON BUTTONS (Sidebar) */
     .icon-btn > div > button {
         border: none !important;
         background-color: transparent !important;
@@ -66,26 +70,13 @@ st.markdown("""
         font-size: 1.4rem !important;
         height: 40px !important;
         width: 100% !important;
-        margin-top: 4px !important; /* Micro-adjustment for vertical centering */
     }
     
-    .icon-btn > div > button:hover { background-color: transparent !important; box-shadow: none !important; }
+    .icon-btn > div > button:hover { background-color: transparent !important; }
 
-    /* RENAME UI - Forcing Save to the absolute right */
-    .rename-row {
-        display: flex;
-        justify-content: space-between;
-        width: 100%;
-        margin-top: 5px;
-    }
-    
-    /* Target the specific columns for Cancel/Save */
-    .st-key-cancel_btn_col > div > button { color: #666 !important; border: 1px solid #ccc !important; width: 90% !important; }
-    .st-key-save_btn_col > div > button { 
-        color: white !important; 
-        background-color: var(--buddy-green) !important; 
-        width: 100% !important;
-        margin-right: -15px !important; /* Pulls it toward the sidebar edge */
+    /* Rename Input styling */
+    .stTextInput input {
+        height: 38px !important;
     }
 
     .section-title { font-weight: bold; color: #0000FF; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
@@ -129,52 +120,63 @@ if check_password():
         st.divider()
         st.subheader("Your Projects")
         
-        for proj in list(st.session_state.projects.keys()):
-            # Use a slightly wider center gap for icons
-            cols = st.columns([5, 1, 1])
-            is_active = (proj == st.session_state.active_project)
-            label = f"📍 {proj}" if is_active else proj
-            
-            with cols[0]:
-                if st.button(label, key=f"sel_{proj}", use_container_width=True, type="primary" if is_active else "secondary"):
-                    st.session_state.active_project = proj
-                    st.rerun()
-            
-            with cols[1]:
-                st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
-                if st.button("📝", key=f"edit_btn_{proj}"):
-                    st.session_state[f"renaming_{proj}"] = True
-                st.markdown('</div>', unsafe_allow_html=True)
+        # Shared Column Layout Ratio
+        layout_ratio = [5, 1, 1]
 
-            with cols[2]:
-                if len(st.session_state.projects) > 1:
+        for proj in list(st.session_state.projects.keys()):
+            is_active = (proj == st.session_state.active_project)
+            is_renaming = st.session_state.get(f"renaming_{proj}", False)
+
+            if not is_renaming:
+                cols = st.columns(layout_ratio)
+                with cols[0]:
+                    label = f"📍 {proj}" if is_active else proj
+                    if st.button(label, key=f"sel_{proj}", use_container_width=True, type="primary" if is_active else "secondary"):
+                        st.session_state.active_project = proj
+                        st.rerun()
+                
+                with cols[1]:
                     st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
-                    if st.button("🗑️", key=f"del_{proj}"):
-                        del st.session_state.projects[proj]
-                        if is_active:
-                            st.session_state.active_project = list(st.session_state.projects.keys())[0]
-                        save_data(st.session_state.projects)
+                    if st.button("📝", key=f"edit_btn_{proj}"):
+                        st.session_state[f"renaming_{proj}"] = True
                         st.rerun()
                     st.markdown('</div>', unsafe_allow_html=True)
+
+                with cols[2]:
+                    if len(st.session_state.projects) > 1:
+                        st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
+                        if st.button("🗑️", key=f"del_{proj}"):
+                            del st.session_state.projects[proj]
+                            if is_active:
+                                st.session_state.active_project = list(st.session_state.projects.keys())[0]
+                            save_data(st.session_state.projects)
+                            st.rerun()
+                        st.markdown('</div>', unsafe_allow_html=True)
             
-            # --- INLINE RENAME UI ---
-            if st.session_state.get(f"renaming_{proj}", False):
+            else:
+                # Rename Mode: Mirrors Project Row Columns
                 new_name = st.text_input(f"Rename", value=proj, key=f"input_{proj}", label_visibility="collapsed")
                 
-                # We use a 1:1 split for the rename buttons
-                btn_cols = st.columns(2)
-                with btn_cols[0]:
-                    if st.button("Cancel", key=f"cancel_btn_col_{proj}"):
+                btn_cols = st.columns(layout_ratio)
+                # btn_cols[0] is empty to keep space for the input above
+                
+                with btn_cols[1]: # Aligns with Pencil
+                    st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
+                    if st.button("✖️", key=f"cancel_{proj}", help="Cancel"):
                         st.session_state[f"renaming_{proj}"] = False
                         st.rerun()
-                with btn_cols[1]:
-                    if st.button("Save", key=f"save_btn_col_{proj}"):
+                    st.markdown('</div>', unsafe_allow_html=True)
+                
+                with btn_cols[2]: # Aligns with Bin
+                    st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
+                    if st.button("✔️", key=f"save_{proj}", help="Save Name"):
                         if new_name and new_name != proj:
                             st.session_state.projects[new_name] = st.session_state.projects.pop(proj)
                             if is_active: st.session_state.active_project = new_name
                             save_data(st.session_state.projects)
                         st.session_state[f"renaming_{proj}"] = False
                         st.rerun()
+                    st.markdown('</div>', unsafe_allow_html=True)
 
     # --- MAIN UI HEADER ---
     st.markdown('<div class="sticky-wrapper">', unsafe_allow_html=True)
@@ -198,5 +200,65 @@ if check_password():
     uploaded_files = st.file_uploader("Upload papers (PDF)", type="pdf", accept_multiple_files=True)
     run_review = st.button("🔬 Analyse paper", use_container_width=True)
 
-    # (Remaining analysis and tab logic stays the same)
-    # ...
+    if uploaded_files and llm and run_review:
+        progress_text = st.empty()
+        existing_titles = {paper['Title'].lower() for paper in st.session_state.projects[st.session_state.active_project]}
+        
+        for file in uploaded_files:
+            progress_text.text(f"📖 Reviewing: {file.name}...")
+            try:
+                reader = PdfReader(file) 
+                text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
+                prompt = f"Analyze as PhD Candidate: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. Sophisticated prose, no bolding. TEXT: {text[:30000]}"
+                res = llm.invoke([HumanMessage(content=prompt)]).content
+                res = re.sub(r'\*', '', res) 
+
+                def ext(label, next_l=None):
+                    p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
+                    m = re.search(p, res, re.DOTALL | re.IGNORECASE)
+                    return m.group(1).strip() if m else "Not found."
+
+                title = ext("TITLE", "AUTHORS")
+                if title.lower() not in existing_titles:
+                    st.session_state.projects[st.session_state.active_project].append({
+                        "#": len(st.session_state.projects[st.session_state.active_project]) + 1,
+                        "Title": title,
+                        "Authors": ext("AUTHORS", "YEAR"),
+                        "Year": ext("YEAR", "REFERENCE"),
+                        "Reference": ext("REFERENCE", "SUMMARY"),
+                        "Summary": ext("SUMMARY", "BACKGROUND"),
+                        "Background": ext("BACKGROUND", "METHODOLOGY"),
+                        "Methodology": ext("METHODOLOGY", "CONTEXT"),
+                        "Context": ext("CONTEXT", "FINDINGS"),
+                        "Findings": ext("FINDINGS", "RELIABILITY"),
+                        "Reliability": ext("RELIABILITY")
+                    })
+                    existing_titles.add(title.lower())
+            except Exception as e: st.error(f"Error: {e}")
+        progress_text.empty()
+        save_data(st.session_state.projects)
+        st.rerun()
+
+    current_data = st.session_state.projects[st.session_state.active_project]
+    
+    if current_data:
+        t1, t2, t3 = st.tabs(["🖼️ Card Gallery", "📊 Master Table", "🧠 Synthesis"])
+        with t1:
+            for r in reversed(current_data):
+                with st.container(border=True):
+                    cr, ct = st.columns([1, 12]); cr.metric("Ref", r['#']); ct.subheader(r['Title'])
+                    st.divider()
+                    for k, v in [("📝 Summary", r["Summary"]), ("⚙️ Methodology", r["Methodology"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]:
+                        st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
+        with t2:
+            df = pd.DataFrame(current_data)
+            st.dataframe(df, use_container_width=True, hide_index=True)
+            st.download_button("📊 Export Project CSV", data=df.to_csv(index=False).encode('utf-8-sig'), file_name=f"{st.session_state.active_project}.csv", use_container_width=True)
+        with t3:
+            if len(current_data) > 0:
+                with st.spinner("Synthesizing..."):
+                    evidence = "".join([f"P{r['#']}: {r['Findings']}\n" for r in current_data])
+                    synth_res = llm.invoke([HumanMessage(content=f"Meta-Synthesis: Use [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS]. No bolding. TEXT:\n{evidence}")]).content
+                    st.write(synth_res)
+
+    st.markdown('</div>', unsafe_allow_html=True)
