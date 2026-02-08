@@ -17,7 +17,8 @@ def load_data():
     if os.path.exists(DB_FILE):
         try:
             with open(DB_FILE, "r") as f:
-                return json.load(f)
+                data = json.load(f)
+                return data if data else {"Default Project": []}
         except:
             return {"Default Project": []}
     return {"Default Project": []}
@@ -60,33 +61,53 @@ def check_password():
     return True
 
 if check_password():
+    # Load and initialize session state properly
     if 'projects' not in st.session_state:
         st.session_state.projects = load_data()
+    
+    project_list = list(st.session_state.projects.keys())
+    
     if 'active_project' not in st.session_state:
-        st.session_state.active_project = list(st.session_state.projects.keys())[0]
+        st.session_state.active_project = project_list[0]
 
     # --- SIDEBAR ---
     with st.sidebar:
         st.title("📁 Research Manager")
         
-        st.session_state.active_project = st.selectbox(
-            "Select Project", 
-            options=list(st.session_state.projects.keys())
+        # Project Selector with a key to maintain state
+        selected_proj = st.selectbox(
+            "Current Project", 
+            options=project_list,
+            index=project_list.index(st.session_state.active_project) if st.session_state.active_project in project_list else 0
         )
+        st.session_state.active_project = selected_proj
         
         st.divider()
-        new_proj_name = st.text_input("New Project Name")
+        
+        # Create Project Logic
+        new_proj_name = st.text_input("Name for New Review")
         if st.button("➕ Create Project"):
             if new_proj_name and new_proj_name not in st.session_state.projects:
                 st.session_state.projects[new_proj_name] = []
                 st.session_state.active_project = new_proj_name
                 save_data(st.session_state.projects)
                 st.rerun()
+            elif not new_proj_name:
+                st.warning("Please enter a name.")
+            else:
+                st.warning("Project already exists.")
 
         st.divider()
-        if st.button("💾 Save All Progress"):
-            save_data(st.session_state.projects)
-            st.success("Library saved successfully!")
+        
+        # Delete Project Logic
+        if st.button("🗑️ Delete Current Project"):
+            if len(st.session_state.projects) > 1:
+                del st.session_state.projects[st.session_state.active_project]
+                st.session_state.active_project = list(st.session_state.projects.keys())[0]
+                save_data(st.session_state.projects)
+                st.rerun()
+            else:
+                st.error("Cannot delete the last remaining project.")
 
     # --- MAIN UI ---
     st.markdown(f'''
@@ -107,6 +128,7 @@ if check_password():
 
     if uploaded_files and llm and run_review:
         progress_text = st.empty()
+        # Scope filenames specifically to the active project
         existing_titles = {paper['Title'].lower() for paper in st.session_state.projects[st.session_state.active_project]}
         
         for file in uploaded_files:
@@ -115,7 +137,6 @@ if check_password():
                 reader = PdfReader(file) 
                 text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
                 
-                # REINSTATED VERSION 1 PROMPT
                 prompt = f"""
                 You are a PhD Candidate performing a Systematic Literature Review. Analyze the provided text with extreme academic rigour.
                 Avoid excessive use of commas; provide fluid, sophisticated academic prose.
@@ -133,7 +154,6 @@ if check_password():
                 res = llm.invoke([HumanMessage(content=prompt)]).content
                 res = re.sub(r'\*', '', res) 
 
-                # REINSTATED VERSION 1 EXTRACTION LOGIC
                 def ext(label, next_l=None):
                     p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
                     m = re.search(p, res, re.DOTALL | re.IGNORECASE)
@@ -158,6 +178,7 @@ if check_password():
             except Exception as e: st.error(f"Error on {file.name}: {e}")
         progress_text.empty()
         save_data(st.session_state.projects)
+        st.rerun() # Refresh to show cards immediately
 
     current_data = st.session_state.projects[st.session_state.active_project]
     
