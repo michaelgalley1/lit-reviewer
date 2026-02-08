@@ -60,6 +60,7 @@ st.markdown("""
 }
 .bin-btn button:hover { color: red !important; background: #ffe6e6 !important; }
 .arrow-btn button:hover { color: var(--buddy-green) !important; background: #e6fffa !important; }
+.edit-btn button:hover { color: #FFA500 !important; background: #fff5e6 !important; }
 
 /* -------------------------
    PROJECT PAGE STYLES
@@ -71,7 +72,7 @@ st.markdown("""
     top: 0;
     left: 0;
     width: 100%;
-    height: 80px; /* Slightly shorter now that subtitle is gone */
+    height: 80px; 
     background: white;
     border-bottom: 2px solid #f0f2f6;
     z-index: 1000;
@@ -145,6 +146,8 @@ if check_password():
         st.session_state.projects = load_data()
     if 'active_project' not in st.session_state:
         st.session_state.active_project = None 
+    if 'renaming_project' not in st.session_state:
+        st.session_state.renaming_project = None
 
     # ==========================================
     # VIEW 1: HOME PAGE (Project Library)
@@ -180,28 +183,65 @@ if check_password():
             st.markdown("### Your Projects")
             for proj_name in projects:
                 with st.container(border=True):
-                    col_name, col_spacer, col_del, col_open = st.columns([6, 2, 0.5, 0.5])
                     
-                    with col_name:
-                        paper_count = len(st.session_state.projects[proj_name])
-                        st.markdown(f"<div style='display:flex; flex-direction:column; justify-content:center; height:100%;'>"
-                                    f"<h3 style='margin:0; padding:0; font-size:1.1rem; color:#333;'>📍 {proj_name}</h3>"
-                                    f"<span style='font-size:0.85rem; color:#666;'>📚 {paper_count} Papers</span></div>", unsafe_allow_html=True)
-                    
-                    with col_del:
-                        st.markdown('<div class="icon-btn bin-btn">', unsafe_allow_html=True)
-                        if st.button("🗑️", key=f"del_{proj_name}", help=f"Delete {proj_name}"):
-                            del st.session_state.projects[proj_name]
-                            save_data(st.session_state.projects)
-                            st.rerun()
-                        st.markdown('</div>', unsafe_allow_html=True)
-                    
-                    with col_open:
-                        st.markdown('<div class="icon-btn arrow-btn">', unsafe_allow_html=True)
-                        if st.button("➡️", key=f"open_{proj_name}", help=f"Open {proj_name}"):
-                            st.session_state.active_project = proj_name
-                            st.rerun()
-                        st.markdown('</div>', unsafe_allow_html=True)
+                    # CHECK IF IN RENAME MODE
+                    if st.session_state.renaming_project == proj_name:
+                        # EDIT MODE LAYOUT
+                        r_col1, r_col2, r_col3 = st.columns([6, 1, 1])
+                        with r_col1:
+                            new_name_val = st.text_input("Rename", value=proj_name, label_visibility="collapsed", key=f"input_{proj_name}")
+                        with r_col2:
+                            if st.button("✅", key=f"save_rename_{proj_name}", use_container_width=True):
+                                if new_name_val and new_name_val != proj_name:
+                                    if new_name_val in st.session_state.projects:
+                                        st.error("Exists!")
+                                    else:
+                                        # Rename key in dictionary
+                                        st.session_state.projects[new_name_val] = st.session_state.projects.pop(proj_name)
+                                        save_data(st.session_state.projects)
+                                        st.session_state.renaming_project = None
+                                        st.rerun()
+                                else:
+                                    st.session_state.renaming_project = None
+                                    st.rerun()
+                        with r_col3:
+                            if st.button("❌", key=f"cancel_rename_{proj_name}", use_container_width=True):
+                                st.session_state.renaming_project = None
+                                st.rerun()
+                    else:
+                        # VIEW MODE LAYOUT: Name | Spacer | Rename | Delete | Open
+                        col_name, col_spacer, col_edit, col_del, col_open = st.columns([5.5, 1.5, 0.5, 0.5, 0.5])
+                        
+                        with col_name:
+                            paper_count = len(st.session_state.projects[proj_name])
+                            st.markdown(f"<div style='display:flex; flex-direction:column; justify-content:center; height:100%;'>"
+                                        f"<h3 style='margin:0; padding:0; font-size:1.1rem; color:#333;'>📍 {proj_name}</h3>"
+                                        f"<span style='font-size:0.85rem; color:#666;'>📚 {paper_count} Papers</span></div>", unsafe_allow_html=True)
+                        
+                        # 1. RENAME BUTTON
+                        with col_edit:
+                            st.markdown('<div class="icon-btn edit-btn">', unsafe_allow_html=True)
+                            if st.button("🖊️", key=f"edit_{proj_name}", help=f"Rename {proj_name}"):
+                                st.session_state.renaming_project = proj_name
+                                st.rerun()
+                            st.markdown('</div>', unsafe_allow_html=True)
+
+                        # 2. DELETE BUTTON
+                        with col_del:
+                            st.markdown('<div class="icon-btn bin-btn">', unsafe_allow_html=True)
+                            if st.button("🗑️", key=f"del_{proj_name}", help=f"Delete {proj_name}"):
+                                del st.session_state.projects[proj_name]
+                                save_data(st.session_state.projects)
+                                st.rerun()
+                            st.markdown('</div>', unsafe_allow_html=True)
+                        
+                        # 3. OPEN BUTTON
+                        with col_open:
+                            st.markdown('<div class="icon-btn arrow-btn">', unsafe_allow_html=True)
+                            if st.button("➡️", key=f"open_{proj_name}", help=f"Open {proj_name}"):
+                                st.session_state.active_project = proj_name
+                                st.rerun()
+                            st.markdown('</div>', unsafe_allow_html=True)
 
     # ==========================================
     # VIEW 2: ANALYSIS DASHBOARD (Individual Project)
