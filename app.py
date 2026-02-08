@@ -49,26 +49,24 @@ def save_full_library(library):
         try:
             new_df = pd.DataFrame(flat_data)
             conn.update(data=new_df)
+            return True
         except Exception as e:
             st.error(f"⚠️ Storage Error: {e}")
+            return False
 
-# 3. STYLING
+# 3. STYLING (Restored PhD Styling & Right-Aligned Actions)
 st.markdown("""
 <style>
 [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
 :root { --buddy-green: #18A48C; --buddy-blue: #0000FF; }
 [data-testid="block-container"] { padding-top: 0rem !important; }
-[data-testid="stTextInput"] div[data-baseweb="input"] { border: 1px solid #d3d3d3 !important; }
-[data-testid="stTextInput"] div[data-baseweb="input"]:hover { border-color: var(--buddy-green) !important; }
-[data-testid="stTextInput"] div[data-baseweb="input"]:focus-within { border: 2px solid var(--buddy-green) !important; }
-div[data-testid="stButton"] button:hover { background-color: var(--buddy-green) !important; color: white !important; }
-.icon-btn div[data-testid="stButton"] button { height: 38px !important; width: 38px !important; padding: 0 !important; border: none !important; background: transparent !important; }
-.card-del-container div[data-testid="stButton"] button { color: #ff4b4b !important; border: 1px solid #ff4b4b !important; background: transparent !important; font-size: 0.85rem !important; min-width: 140px !important; }
+.section-title { font-weight: bold; color: #0000FF; margin-top: 1rem; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 0.06rem solid #eee; }
+.section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
 .fixed-header-bg { position: fixed; top: 0; left: 0; width: 100%; height: 4.5rem; background: white; border-bottom: 0.125rem solid #f0f2f6; z-index: 1000; padding-left: 3.75rem; display: flex; align-items: center; }
 .fixed-header-text h1 { margin: 0; font-size: 2.2rem; color: #0000FF; }
 .upload-pull-up { margin-top: -3.0rem !important; }
-.section-title { font-weight: bold; color: #0000FF; margin-top: 1rem; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 0.06rem solid #eee; }
-.section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
+.synth-container { background-color: #f8f9fa; padding: 20px; border-radius: 10px; border-left: 5px solid var(--buddy-blue); }
+.icon-btn div[data-testid="stButton"] button { height: 38px !important; width: 38px !important; padding: 0 !important; border: none !important; background: transparent !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -121,23 +119,18 @@ if st.session_state.active_project is None:
                     with col_name:
                         p_count = len(st.session_state.projects[proj_name]["papers"])
                         st.markdown(f"**📍 {proj_name}** ({p_count} Papers)")
-                    with col_edit:
-                        st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
-                        if st.button("🖊️", key=f"ed_{proj_name}"): st.session_state.renaming_project = proj_name; st.rerun()
-                        st.markdown('</div>', unsafe_allow_html=True)
-                    with col_del:
-                        st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
-                        if st.button("🗑️", key=f"dl_{proj_name}"):
-                            del st.session_state.projects[proj_name]
-                            save_full_library(st.session_state.projects); st.rerun()
-                        st.markdown('</div>', unsafe_allow_html=True)
-                    with col_open:
-                        st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
-                        if st.button("➡️", key=f"op_{proj_name}"):
-                            st.session_state.active_project = proj_name
-                            st.session_state.projects[proj_name]["last_accessed"] = time.time()
-                            save_full_library(st.session_state.projects); st.rerun()
-                        st.markdown('</div>', unsafe_allow_html=True)
+                    for icon, key in [("🖊️", "ed"), ("🗑️", "dl"), ("➡️", "op")]:
+                        with locals()[f"col_{'edit' if key=='ed' else 'del' if key=='dl' else 'open'}"]:
+                            st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
+                            if st.button(icon, key=f"{key}_{proj_name}"):
+                                if key == "ed": st.session_state.renaming_project = proj_name
+                                elif key == "dl": del st.session_state.projects[proj_name]; save_full_library(st.session_state.projects)
+                                else: 
+                                    st.session_state.active_project = proj_name
+                                    st.session_state.projects[proj_name]["last_accessed"] = time.time()
+                                    save_full_library(st.session_state.projects)
+                                st.rerun()
+                            st.markdown('</div>', unsafe_allow_html=True)
 else:
     # --- PROJECT VIEW ---
     st.markdown(f'<div class="fixed-header-bg"><div class="fixed-header-text"><h1>{st.session_state.active_project}</h1></div></div>', unsafe_allow_html=True)
@@ -148,58 +141,28 @@ else:
     if st.button("🔬 Analyse paper", use_container_width=True):
         if uploaded_files:
             progress_container = st.empty()
-            
-            # Identify which papers in the library already exist for this project
             existing_titles = [p['Title'].lower() for p in st.session_state.projects[st.session_state.active_project]["papers"]]
-            
             for file in uploaded_files:
-                # Check if this specific file has been processed in this session 
-                if file.name in st.session_state.processed_filenames:
-                    continue
-                
+                if file.name in st.session_state.processed_filenames: continue
                 progress_container.info(f"📖 Analysing: {file.name}...")
                 reader = PdfReader(file)
                 text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
-                
-                prompt = (
-                    "Act as a Senior Academic Researcher and PhD Supervisor specializing in Systematic Literature Reviews. "
-                    "Carefully analyze the text and extract for the following categories:\n\n"
-                    "[TITLE]: The full title.\n[AUTHORS]: All primary authors.\n[YEAR]: Year of publication.\n"
-                    "[REFERENCE]: Full Harvard-style citation.\n[SUMMARY]: Concise overview.\n"
-                    "[BACKGROUND]: Gap and framework.\n[METHODOLOGY]: Design, N=, tools.\n[CONTEXT]: Location/population.\n"
-                    "[FINDINGS]: Specific results.\n[RELIABILITY]: Critique limitations.\n\n"
-                    "RULES: Output ONLY bracketed labels. No bolding or bullets. TEXT: " + text[:30000]
-                )
-                
+                prompt = "Act as Senior Academic Researcher. Extract: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. RULES: Only labels, no bold/bullets. TEXT: " + text[:30000]
                 res = llm.invoke([HumanMessage(content=prompt)]).content
                 res = re.sub(r'\*', '', res)
-                
                 def ext(label):
                     m = re.search(rf"\[{label}\]\s*:?\s*(.*?)(?=\s*\[|$)", res, re.DOTALL | re.IGNORECASE)
                     return m.group(1).strip() if m else "Not explicitly stated."
                 
-                extracted_title = ext("TITLE")
-                
-                # Double-check against library titles to avoid same paper with different filename
-                if extracted_title.lower() in existing_titles:
-                    st.warning(f"Skipping '{file.name}': Paper with this title already exists in library.")
-                    st.session_state.processed_filenames.add(file.name)
-                    continue
+                ext_title = ext("TITLE")
+                if ext_title.lower() in existing_titles:
+                    st.session_state.processed_filenames.add(file.name); continue
 
-                new_paper = {
-                    "#": len(st.session_state.projects[st.session_state.active_project]["papers"]) + 1,
-                    "Title": extracted_title, "Authors": ext("AUTHORS"), "Year": ext("YEAR"), 
-                    "Reference": ext("REFERENCE"), "Summary": ext("SUMMARY"), 
-                    "Background": ext("BACKGROUND"), "Methodology": ext("METHODOLOGY"), 
-                    "Context": ext("CONTEXT"), "Findings": ext("FINDINGS"), 
-                    "Reliability": ext("RELIABILITY")
-                }
+                new_paper = {"#": len(st.session_state.projects[st.session_state.active_project]["papers"]) + 1, "Title": ext_title, "Authors": ext("AUTHORS"), "Year": ext("YEAR"), "Reference": ext("REFERENCE"), "Summary": ext("SUMMARY"), "Background": ext("BACKGROUND"), "Methodology": ext("METHODOLOGY"), "Context": ext("CONTEXT"), "Findings": ext("FINDINGS"), "Reliability": ext("RELIABILITY")}
                 st.session_state.projects[st.session_state.active_project]["papers"].append(new_paper)
                 st.session_state.processed_filenames.add(file.name)
-            
             progress_container.empty()
-            save_full_library(st.session_state.projects)
-            st.rerun()
+            save_full_library(st.session_state.projects); st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
     papers_data = st.session_state.projects[st.session_state.active_project]["papers"]
@@ -213,21 +176,29 @@ else:
                     st.markdown(f'🖊️ Authors: {r.get("Authors")}<br>🗓️ Year: {r.get("Year")}<br>🔗 Full Citation: {r.get("Reference")}', unsafe_allow_html=True)
                     st.divider()
                     sections = [("📝 Summary", "Summary"), ("📖 Background", "Background"), ("⚙️ Methodology", "Methodology"), ("📍 Context", "Context"), ("💡 Findings", "Findings"), ("🛡️ Reliability", "Reliability")]
-                    for k, v in sections:
-                        st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{r.get(v)}</span>', unsafe_allow_html=True)
-                    st.markdown('<div class="card-del-container">', unsafe_allow_html=True)
+                    for k, v in sections: st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{r.get(v)}</span>', unsafe_allow_html=True)
                     if st.button("🗑️ Delete Paper", key=f"dp_{real_idx}"):
                         st.session_state.projects[st.session_state.active_project]["papers"].pop(real_idx)
                         save_full_library(st.session_state.projects); st.rerun()
-                    st.markdown('</div>', unsafe_allow_html=True)
         with t2:
-            st.dataframe(pd.DataFrame(papers_data), use_container_width=True, hide_index=True)
+            df = pd.DataFrame(papers_data)
+            st.dataframe(df, use_container_width=True, hide_index=True)
+            csv = df.to_csv(index=False).encode('utf-8')
+            st.download_button("📥 Export to CSV", data=csv, file_name=f"{st.session_state.active_project}_review.csv", mime='text/csv')
         with t3:
+            st.markdown('<div class="synth-container">', unsafe_allow_html=True)
             evidence = "".join([f"Paper {r.get('#')}: {r.get('Findings')}\n" for r in papers_data])
-            synth_res = llm.invoke([HumanMessage(content=f"Provide a PhD-level synthesis of these findings: {evidence}")]).content
-            st.write(synth_res)
+            if st.button("🧠 Generate Synthesis"):
+                synth_res = llm.invoke([HumanMessage(content=f"Provide a PhD-level synthesis of these findings: {evidence}")]).content
+                st.markdown(f"### Academic Synthesis\n{synth_res}")
+            st.markdown('</div>', unsafe_allow_html=True)
 
-    if st.button("🏠 Library"):
-        st.session_state.processed_filenames = set() # Reset tracker when switching projects
-        st.session_state.active_project = None
-        st.rerun()
+    # RIGHT ALIGNED BOTTOM ACTIONS
+    st.divider()
+    b_col1, b_col2, b_col3 = st.columns([8, 1, 1])
+    with b_col2:
+        if st.button("💾 Save", use_container_width=True):
+            if save_full_library(st.session_state.projects): st.success("Saved!")
+    with b_col3:
+        if st.button("🏠 Library", use_container_width=True):
+            st.session_state.processed_filenames = set(); st.session_state.active_project = None; st.rerun()
