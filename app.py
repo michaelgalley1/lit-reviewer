@@ -33,26 +33,26 @@ st.markdown("""
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
     :root { --buddy-green: #18A48C; --buddy-blue: #0000FF; }
     
-    /* Project List Styling */
-    .project-btn-active {
-        background-color: var(--buddy-green) !important;
-        color: white !important;
-        border: none !important;
-        text-align: left !important;
-        padding: 8px 15px !important;
-        border-radius: 5px;
-        margin-bottom: 5px;
-        font-weight: bold;
-    }
-    
     .sticky-wrapper { position: fixed; top: 0; left: 0; width: 100%; background-color: white; z-index: 1000; padding: 10px 50px 0px 50px; border-bottom: 2px solid #f0f2f6; }
     .main-content { margin-top: -30px; }
     
+    /* Buttons Styling */
     div.stButton > button:first-child, div.stDownloadButton > button:first-child {
-        width: 100% !important; color: var(--buddy-green) !important; border: 2px solid var(--buddy-green) !important; font-weight: bold !important; background-color: transparent !important;
+        width: 100% !important; color: var(--buddy-green) !important; border: 1px solid var(--buddy-green) !important; font-weight: bold !important; background-color: transparent !important;
     }
     div.stButton > button:hover, div.stDownloadButton > button:hover { background-color: var(--buddy-green) !important; color: white !important; }
     
+    /* Sidebar Delete Button Styling */
+    .del-btn > div > button {
+        border: none !important;
+        color: #ff4b4b !important;
+        background: transparent !important;
+    }
+    .del-btn > div > button:hover {
+        color: white !important;
+        background: #ff4b4b !important;
+    }
+
     .section-title { font-weight: bold; color: #0000FF; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
     .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
     </style>
@@ -83,7 +83,6 @@ if check_password():
     with st.sidebar:
         st.title("📁 Research Manager")
         
-        # 1. New Project Input at the top
         new_proj_name = st.text_input("Name for New Review", placeholder="e.g. AI Ethics 2026")
         if st.button("➕ Create Project"):
             if new_proj_name and new_proj_name not in st.session_state.projects:
@@ -93,41 +92,41 @@ if check_password():
                 st.rerun()
         
         st.divider()
-        
-        # 2. Project List (Replaces Dropdown)
         st.subheader("Your Projects")
-        for proj in st.session_state.projects.keys():
-            # If this is the active project, use a special button style or indicator
+        
+        for proj in list(st.session_state.projects.keys()):
+            cols = st.columns([4, 1])
             is_active = (proj == st.session_state.active_project)
-            label = f"📍 {proj}" if is_active else f"📁 {proj}"
+            label = f"📍 {proj}" if is_active else proj
             
-            if st.button(label, key=f"btn_{proj}", use_container_width=True, type="primary" if is_active else "secondary"):
+            # Project Selection Button
+            if cols[0].button(label, key=f"sel_{proj}", use_container_width=True, type="primary" if is_active else "secondary"):
                 st.session_state.active_project = proj
                 st.rerun()
-        
-        st.divider()
-        
-        # 3. Utility Actions
-        if st.button("💾 Save All Progress"):
-            save_data(st.session_state.projects)
-            st.success("Saved!")
             
-        if st.button("🗑️ Delete Current Project"):
+            # Delete Button (The tiny cross)
             if len(st.session_state.projects) > 1:
-                del st.session_state.projects[st.session_state.active_project]
-                st.session_state.active_project = list(st.session_state.projects.keys())[0]
-                save_data(st.session_state.projects)
-                st.rerun()
-            else:
-                st.error("Cannot delete the only project.")
+                st.markdown('<div class="del-btn">', unsafe_allow_html=True)
+                if cols[1].button("×", key=f"del_{proj}", help=f"Delete {proj}"):
+                    del st.session_state.projects[proj]
+                    if is_active:
+                        st.session_state.active_project = list(st.session_state.projects.keys())[0]
+                    save_data(st.session_state.projects)
+                    st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- MAIN UI ---
-    st.markdown(f'''
-        <div class="sticky-wrapper">
-            <h1 style="margin:0; font-size: 1.8rem; color:#0000FF;">📚 {st.session_state.active_project}</h1>
-            <p style="color:#18A48C; margin-bottom:5px; font-weight: bold;">PhD-Level Analysis Mode</p>
-        </div>
-    ''', unsafe_allow_html=True)
+    # --- MAIN UI HEADER ---
+    st.markdown('<div class="sticky-wrapper">', unsafe_allow_html=True)
+    head_col1, head_col2 = st.columns([4, 1])
+    with head_col1:
+        st.markdown(f'<h1 style="margin:0; font-size: 1.8rem; color:#0000FF;">📚 {st.session_state.active_project}</h1>', unsafe_allow_html=True)
+        st.markdown('<p style="color:#18A48C; margin-bottom:5px; font-weight: bold;">PhD-Level Analysis Mode</p>', unsafe_allow_html=True)
+    with head_col2:
+        st.write("##") # Alignment
+        if st.button("💾 Save Progress"):
+            save_data(st.session_state.projects)
+            st.toast("Project Saved!", icon="✅")
+    st.markdown('</div>', unsafe_allow_html=True)
 
     st.write("##")
     st.markdown('<div class="main-content">', unsafe_allow_html=True)
@@ -147,13 +146,7 @@ if check_password():
             try:
                 reader = PdfReader(file) 
                 text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
-                
-                prompt = f"""
-                Analyze as PhD Candidate: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
-                Sophisticated prose, no bolding.
-                FULL TEXT: {text[:30000]} 
-                """
-                
+                prompt = f"Analyze as PhD Candidate: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. Sophisticated prose, no bolding. TEXT: {text[:30000]}"
                 res = llm.invoke([HumanMessage(content=prompt)]).content
                 res = re.sub(r'\*', '', res) 
 
@@ -187,7 +180,6 @@ if check_password():
     
     if current_data:
         t1, t2, t3 = st.tabs(["🖼️ Card Gallery", "📊 Master Table", "🧠 Synthesis"])
-        
         with t1:
             for r in reversed(current_data):
                 with st.container(border=True):
@@ -195,18 +187,15 @@ if check_password():
                     st.divider()
                     for k, v in [("📝 Summary", r["Summary"]), ("⚙️ Methodology", r["Methodology"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]:
                         st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
-        
         with t2:
             df = pd.DataFrame(current_data)
             st.dataframe(df, use_container_width=True, hide_index=True)
             st.download_button("📊 Export Project CSV", data=df.to_csv(index=False).encode('utf-8-sig'), file_name=f"{st.session_state.active_project}.csv", use_container_width=True)
-
         with t3:
             if len(current_data) > 0:
                 with st.spinner("Synthesizing..."):
                     evidence = "".join([f"P{r['#']}: {r['Findings']}\n" for r in current_data])
-                    synth_prompt = f"Meta-Synthesis of findings. No bolding. Use [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS].\n{evidence}"
-                    raw_synth = llm.invoke([HumanMessage(content=synth_prompt)]).content
-                    st.write(raw_synth)
+                    synth_res = llm.invoke([HumanMessage(content=f"Meta-Synthesis: Use [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS]. No bolding. TEXT:\n{evidence}")]).content
+                    st.write(synth_res)
 
     st.markdown('</div>', unsafe_allow_html=True)
