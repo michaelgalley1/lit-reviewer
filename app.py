@@ -73,9 +73,8 @@ div[data-testid="stButton"] button:hover {
 }
 
 /* -------------------------
-   CARD DELETE BUTTON (True Right Alignment)
+   CARD DELETE BUTTON (Expansion Fix)
    ------------------------- */
-/* This forces the button to the absolute right of its column */
 .card-del-container {
     display: flex;
     justify-content: flex-end;
@@ -86,10 +85,14 @@ div[data-testid="stButton"] button:hover {
     color: #ff4b4b !important;
     border: 1px solid #ff4b4b !important;
     background: transparent !important;
-    font-size: 0.85rem !important;
+    font-size: 0.8rem !important;
     height: 32px !important;
-    padding: 0 15px !important;
-    white-space: nowrap;
+    padding: 0 12px !important;
+    /* FORCE SINGLE LINE */
+    white-space: nowrap !important;
+    width: auto !important;
+    min-width: max-content !important;
+    display: inline-block !important;
 }
 
 /* -------------------------
@@ -164,9 +167,7 @@ if check_password():
         st.session_state.renaming_project = None
 
     if st.session_state.active_project is None:
-        # LIBRARY VIEW
         st.markdown('<div><h1 style="margin:0; font-size: 2.5rem; color:#0000FF;">🗂️ Project Library</h1><p style="color:#18A48C; font-weight: bold; font-size: 1.1rem; margin-bottom: 1.25rem;">Select an existing review or start a new one.</p></div>', unsafe_allow_html=True)
-
         with st.container(border=True):
             c1, c2 = st.columns([4, 1])
             new_name = c1.text_input("New Project Name", placeholder="e.g. AI Ethics 2026", label_visibility="collapsed")
@@ -180,31 +181,23 @@ if check_password():
                     st.error("Project already exists.")
 
         projects = list(st.session_state.projects.keys())
-        if not projects:
-            st.info("No projects yet.")
-        else:
+        if projects:
             def get_timestamp(proj_key):
                 data = st.session_state.projects[proj_key]
                 return data.get("last_accessed", 0) if isinstance(data, dict) else 0
-
             sorted_projects = sorted(projects, key=get_timestamp, reverse=True)
             st.markdown("### Your Projects")
             for proj_name in sorted_projects:
                 with st.container(border=True):
                     if st.session_state.renaming_project == proj_name:
                         r_col1, r_col2, r_col3 = st.columns([6, 1, 1])
-                        with r_col1:
-                            new_name_val = st.text_input("Rename", value=proj_name, label_visibility="collapsed", key=f"input_{proj_name}")
-                        with r_col2:
+                        with r_col1: new_name_val = st.text_input("Rename", value=proj_name, label_visibility="collapsed", key=f"input_{proj_name}")
+                        with r_col2: 
                             if st.button("✅", key=f"save_rename_{proj_name}", use_container_width=True):
-                                if new_name_val and new_name_val != proj_name:
-                                    st.session_state.projects[new_name_val] = st.session_state.projects.pop(proj_name)
-                                    save_data(st.session_state.projects)
-                                    st.session_state.renaming_project = None
-                                    st.rerun()
-                                else:
-                                    st.session_state.renaming_project = None
-                                    st.rerun()
+                                st.session_state.projects[new_name_val] = st.session_state.projects.pop(proj_name)
+                                save_data(st.session_state.projects)
+                                st.session_state.renaming_project = None
+                                st.rerun()
                         with r_col3:
                             if st.button("❌", key=f"cancel_rename_{proj_name}", use_container_width=True):
                                 st.session_state.renaming_project = None
@@ -241,14 +234,10 @@ if check_password():
                             st.markdown('</div>', unsafe_allow_html=True)
 
     else:
-        # PROJECT VIEW
         st.markdown(f'<div class="fixed-header-bg"><div class="fixed-header-text"><h1>{st.session_state.active_project}</h1></div></div>', unsafe_allow_html=True)
         st.markdown('<div class="upload-pull-up">', unsafe_allow_html=True)
-        
         llm = None
-        if api_key:
-            llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
-
+        if api_key: llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
         uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
         run_review = st.button("🔬 Analyse paper", use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
@@ -290,29 +279,19 @@ if check_password():
                 for idx, r in enumerate(reversed(papers_data)):
                     real_idx = len(papers_data) - 1 - idx
                     with st.container(border=True):
-                        # TIGHTENED RATIOS to push button right
-                        col_metric, col_title, col_del = st.columns([1, 12, 1.2])
-                        
-                        with col_metric:
-                            st.metric("Ref", r['#'])
-                        
-                        with col_title:
-                            st.subheader(r['Title'])
-                            
+                        # Increased column ratio for delete button to 1.5
+                        col_metric, col_title, col_del = st.columns([1, 11, 1.5])
+                        with col_metric: st.metric("Ref", r['#'])
+                        with col_title: st.subheader(r['Title'])
                         with col_del:
-                            # Added card-del-container for CSS flex-end pin
                             st.markdown('<div class="card-del-container">', unsafe_allow_html=True)
                             if st.button("🗑️ Delete Paper", key=f"del_paper_{real_idx}"):
                                 st.session_state.projects[st.session_state.active_project]["papers"].pop(real_idx)
-                                for i, p in enumerate(st.session_state.projects[st.session_state.active_project]["papers"]):
-                                    p["#"] = i + 1
+                                for i, p in enumerate(st.session_state.projects[st.session_state.active_project]["papers"]): p["#"] = i + 1
                                 save_data(st.session_state.projects)
                                 st.rerun()
                             st.markdown('</div>', unsafe_allow_html=True)
-
-                        # Metadata directly under the title row
                         st.markdown(f'<div class="metadata-block"><span class="metadata-item">🖊️ Authors: {r["Authors"]}</span><br><span class="metadata-item">🗓️ Year: {r["Year"]}</span><br><span class="metadata-item">🔗 Full Citation: {r["Reference"]}</span></div>', unsafe_allow_html=True)
-                        
                         st.divider()
                         sec = [("📝 Summary", r["Summary"]), ("📖 Background", r["Background"]), ("⚙️ Methodology", r["Methodology"]), ("📍 Context", r["Context"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]
                         for k, v in sec: st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
