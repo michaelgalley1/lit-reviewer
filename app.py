@@ -73,7 +73,7 @@ button:hover {
     color: white !important;
 }
 
-/* Tab Styling - No background hover, specific green underline */
+/* Tab Styling - Removing red underline and setting green active state */
 button[data-baseweb="tab"] {
     background-color: transparent !important;
 }
@@ -84,6 +84,26 @@ button[data-baseweb="tab"]:hover {
 button[data-baseweb="tab"][aria-selected="true"] {
     color: var(--buddy-green) !important;
     border-bottom: 2px solid var(--buddy-green) !important;
+}
+
+/* Specific fix to hide the secondary red/gray underline from Streamlit */
+div[data-baseweb="tab-highlight"] {
+    background-color: transparent !important;
+    visibility: hidden !important;
+}
+
+/* Synthesis Grid Height Alignment */
+.stVerticalBlock div[data-testid="stMetric-container"] {
+    min-height: 250px !important;
+}
+
+/* Custom Card Style for Synthesis to ensure equal heights */
+.synth-card {
+    min-height: 280px;
+    border: 1px solid #e6e9ef;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    background-color: white;
 }
 
 .section-title { font-weight: bold; color: var(--buddy-blue); margin-top: 1rem; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 0.06rem solid #eee; }
@@ -213,36 +233,28 @@ else:
             csv = df.to_csv(index=False).encode('utf-8')
             st.download_button("📥 Export to CSV", data=csv, file_name=f"{st.session_state.active_project}_review.csv", mime='text/csv')
         with t3:
-            # --- SYNTHESIS GRID VIEW ---
+            # --- SYNTHESIS GRID VIEW WITH FIXED HEIGHT CARDS ---
             synth_data = st.session_state.get(f"synth_dict_{st.session_state.active_project}", {})
             
             if synth_data:
                 # Row 1
                 c1, c2 = st.columns(2)
                 with c1:
-                    with st.container(border=True):
-                        st.markdown("📋 **Overview of papers**")
-                        st.write(synth_data.get("overview", "Click Try Again to generate."))
+                    st.markdown(f'<div class="synth-card">📋 <b>Overview of papers</b><br><br>{synth_data.get("overview", "...")}</div>', unsafe_allow_html=True)
                 with c2:
-                    with st.container(border=True):
-                        st.markdown("🤝 **Overlaps in their findings**")
-                        st.write(synth_data.get("overlaps", "Click Try Again to generate."))
+                    st.markdown(f'<div class="synth-card">🤝 <b>Overlaps in their findings</b><br><br>{synth_data.get("overlaps", "...")}</div>', unsafe_allow_html=True)
                 
+                st.markdown("<br>", unsafe_allow_html=True)
                 # Row 2
                 c3, c4 = st.columns(2)
                 with c3:
-                    with st.container(border=True):
-                        st.markdown("⚔️ **Contradictions in their findings**")
-                        st.write(synth_data.get("contradictions", "Click Try Again to generate."))
+                    st.markdown(f'<div class="synth-card">⚔️ <b>Contradictions in their findings</b><br><br>{synth_data.get("contradictions", "...")}</div>', unsafe_allow_html=True)
                 with c4:
-                    with st.container(border=True):
-                        st.markdown("🚀 **Suggestions for future research**")
-                        st.write(synth_data.get("future", "Click Try Again to generate."))
+                    st.markdown(f'<div class="synth-card">🚀 <b>Suggestions for future research</b><br><br>{synth_data.get("future", "...")}</div>', unsafe_allow_html=True)
                 
-                # Full width summary at bottom
-                with st.container(border=True):
-                    st.markdown("📝 **Summary of synthesis**")
-                    st.write(synth_data.get("summary", "Click Try Again to generate."))
+                st.markdown("<br>", unsafe_allow_html=True)
+                # Full width summary
+                st.markdown(f'<div class="synth-card" style="min-height: 150px;">📝 <b>Summary of synthesis</b><br><br>{synth_data.get("summary", "...")}</div>', unsafe_allow_html=True)
             else:
                 st.info("No synthesis generated yet.")
 
