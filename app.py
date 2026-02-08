@@ -10,7 +10,7 @@ import os
 # 1. PAGE CONFIGURATION
 st.set_page_config(page_title="Literature Review Buddy", page_icon="📚", layout="wide")
 
-# 2. STORAGE LOGIC (JSON)
+# 2. STORAGE LOGIC
 DB_FILE = "buddy_library.json"
 
 def load_data():
@@ -27,22 +27,34 @@ def save_data(data):
     with open(DB_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
-# 3. STYLING (CSS)
+# 3. STYLING
 st.markdown("""
     <style>
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
     :root { --buddy-green: #18A48C; --buddy-blue: #0000FF; }
-    [data-testid="stTextInput"] div[data-baseweb="input"] { border: 1px solid #d3d3d3 !important; }
+    
+    /* Project List Styling */
+    .project-btn-active {
+        background-color: var(--buddy-green) !important;
+        color: white !important;
+        border: none !important;
+        text-align: left !important;
+        padding: 8px 15px !important;
+        border-radius: 5px;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    
     .sticky-wrapper { position: fixed; top: 0; left: 0; width: 100%; background-color: white; z-index: 1000; padding: 10px 50px 0px 50px; border-bottom: 2px solid #f0f2f6; }
     .main-content { margin-top: -30px; }
+    
     div.stButton > button:first-child, div.stDownloadButton > button:first-child {
         width: 100% !important; color: var(--buddy-green) !important; border: 2px solid var(--buddy-green) !important; font-weight: bold !important; background-color: transparent !important;
     }
     div.stButton > button:hover, div.stDownloadButton > button:hover { background-color: var(--buddy-green) !important; color: white !important; }
+    
     .section-title { font-weight: bold; color: #0000FF; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
     .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
-    .metadata-block { margin-bottom: 10px; }
-    .metadata-item { color: #444; font-size: 0.95rem; margin-bottom: 4px; display: block; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -61,45 +73,45 @@ def check_password():
     return True
 
 if check_password():
-    # Load and initialize session state properly
     if 'projects' not in st.session_state:
         st.session_state.projects = load_data()
     
-    project_list = list(st.session_state.projects.keys())
-    
     if 'active_project' not in st.session_state:
-        st.session_state.active_project = project_list[0]
+        st.session_state.active_project = list(st.session_state.projects.keys())[0]
 
     # --- SIDEBAR ---
     with st.sidebar:
         st.title("📁 Research Manager")
         
-        # Project Selector with a key to maintain state
-        selected_proj = st.selectbox(
-            "Current Project", 
-            options=project_list,
-            index=project_list.index(st.session_state.active_project) if st.session_state.active_project in project_list else 0
-        )
-        st.session_state.active_project = selected_proj
-        
-        st.divider()
-        
-        # Create Project Logic
-        new_proj_name = st.text_input("Name for New Review")
+        # 1. New Project Input at the top
+        new_proj_name = st.text_input("Name for New Review", placeholder="e.g. AI Ethics 2026")
         if st.button("➕ Create Project"):
             if new_proj_name and new_proj_name not in st.session_state.projects:
                 st.session_state.projects[new_proj_name] = []
                 st.session_state.active_project = new_proj_name
                 save_data(st.session_state.projects)
                 st.rerun()
-            elif not new_proj_name:
-                st.warning("Please enter a name.")
-            else:
-                st.warning("Project already exists.")
-
+        
         st.divider()
         
-        # Delete Project Logic
+        # 2. Project List (Replaces Dropdown)
+        st.subheader("Your Projects")
+        for proj in st.session_state.projects.keys():
+            # If this is the active project, use a special button style or indicator
+            is_active = (proj == st.session_state.active_project)
+            label = f"📍 {proj}" if is_active else f"📁 {proj}"
+            
+            if st.button(label, key=f"btn_{proj}", use_container_width=True, type="primary" if is_active else "secondary"):
+                st.session_state.active_project = proj
+                st.rerun()
+        
+        st.divider()
+        
+        # 3. Utility Actions
+        if st.button("💾 Save All Progress"):
+            save_data(st.session_state.projects)
+            st.success("Saved!")
+            
         if st.button("🗑️ Delete Current Project"):
             if len(st.session_state.projects) > 1:
                 del st.session_state.projects[st.session_state.active_project]
@@ -107,7 +119,7 @@ if check_password():
                 save_data(st.session_state.projects)
                 st.rerun()
             else:
-                st.error("Cannot delete the last remaining project.")
+                st.error("Cannot delete the only project.")
 
     # --- MAIN UI ---
     st.markdown(f'''
@@ -128,7 +140,6 @@ if check_password():
 
     if uploaded_files and llm and run_review:
         progress_text = st.empty()
-        # Scope filenames specifically to the active project
         existing_titles = {paper['Title'].lower() for paper in st.session_state.projects[st.session_state.active_project]}
         
         for file in uploaded_files:
@@ -138,16 +149,8 @@ if check_password():
                 text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
                 
                 prompt = f"""
-                You are a PhD Candidate performing a Systematic Literature Review. Analyze the provided text with extreme academic rigour.
-                Avoid excessive use of commas; provide fluid, sophisticated academic prose.
-                Structure your response using ONLY these labels:
-                [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
-
-                Requirements:
-                - [METHODOLOGY]: Design critique, sampling, and statistical validity.
-                - [RELIABILITY]: Discuss internal/external validity and potential biases.
-                - No bolding (**). No lists. Use sophisticated academic prose.
-
+                Analyze as PhD Candidate: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
+                Sophisticated prose, no bolding.
                 FULL TEXT: {text[:30000]} 
                 """
                 
@@ -175,10 +178,10 @@ if check_password():
                         "Reliability": ext("RELIABILITY")
                     })
                     existing_titles.add(title.lower())
-            except Exception as e: st.error(f"Error on {file.name}: {e}")
+            except Exception as e: st.error(f"Error: {e}")
         progress_text.empty()
         save_data(st.session_state.projects)
-        st.rerun() # Refresh to show cards immediately
+        st.rerun()
 
     current_data = st.session_state.projects[st.session_state.active_project]
     
@@ -189,16 +192,8 @@ if check_password():
             for r in reversed(current_data):
                 with st.container(border=True):
                     cr, ct = st.columns([1, 12]); cr.metric("Ref", r['#']); ct.subheader(r['Title'])
-                    st.markdown(f'''
-                        <div class="metadata-block">
-                            <span class="metadata-item">🖊️ <b>Authors:</b> {r["Authors"]}</span>
-                            <span class="metadata-item">🗓️ <b>Year:</b> {r["Year"]}</span>
-                            <span class="metadata-item">🔗 <b>Full Citation:</b> {r["Reference"]}</span>
-                        </div>
-                    ''', unsafe_allow_html=True)
                     st.divider()
-                    sec = [("📝 Summary", r["Summary"]), ("📖 Background", r["Background"]), ("⚙️ Methodology", r["Methodology"]), ("📍 Context", r["Context"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]
-                    for k, v in sec:
+                    for k, v in [("📝 Summary", r["Summary"]), ("⚙️ Methodology", r["Methodology"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]:
                         st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
         
         with t2:
@@ -209,19 +204,9 @@ if check_password():
         with t3:
             if len(current_data) > 0:
                 with st.spinner("Synthesizing..."):
-                    evidence_base = "".join([f"Paper {r['#']} ({r['Year']}): Findings: {r['Findings']}. Methodology: {r['Methodology']}\n\n" for r in current_data])
-                    synth_prompt = f"Meta-Synthesis: Use [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS]. No bolding.\n\nEvidence Base:\n{evidence_base}"
+                    evidence = "".join([f"P{r['#']}: {r['Findings']}\n" for r in current_data])
+                    synth_prompt = f"Meta-Synthesis of findings. No bolding. Use [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS].\n{evidence}"
                     raw_synth = llm.invoke([HumanMessage(content=synth_prompt)]).content
-                    clean_synth = re.sub(r'\*', '', raw_synth)
-
-                    def get_synth(label, next_l=None):
-                        p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
-                        m = re.search(p, clean_synth, re.DOTALL | re.IGNORECASE)
-                        return m.group(1).strip() if m else "Detail not found."
-
-                    st.markdown("### 🎯 Executive Overview"); st.write(get_synth("OVERVIEW", "PATTERNS"))
-                    st.markdown("### 📈 Cross-Study Patterns"); st.write(get_synth("PATTERNS", "CONTRADICTIONS"))
-                    st.markdown("### ⚖️ Conflicts & Contradictions"); st.write(get_synth("CONTRADICTIONS", "FUTURE_DIRECTIONS"))
-                    st.markdown("### 🚀 Future Research Directions"); st.write(get_synth("FUTURE_DIRECTIONS"))
+                    st.write(raw_synth)
 
     st.markdown('</div>', unsafe_allow_html=True)
