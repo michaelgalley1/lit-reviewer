@@ -33,8 +33,25 @@ st.markdown("""
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
     :root { --buddy-green: #18A48C; --buddy-blue: #0000FF; }
     
-    .sticky-wrapper { position: fixed; top: 0; left: 0; width: 100%; background-color: white; z-index: 1000; padding: 10px 50px 0px 50px; border-bottom: 2px solid #f0f2f6; }
-    .main-content { margin-top: -30px; }
+    /* REMOVE DEFAULT STREAMLIT PADDING */
+    /* This pulls the main content up closer to the top of the page */
+    [data-testid="block-container"] {
+        padding-top: 2rem !important;
+    }
+
+    .sticky-wrapper { 
+        position: fixed; 
+        top: 0; 
+        left: 0; 
+        width: 100%; 
+        background-color: white; 
+        z-index: 1000; 
+        padding: 10px 50px 10px 50px; 
+        border-bottom: 2px solid #f0f2f6; 
+    }
+    
+    /* Adjust margin to account for fixed header but keep it tight */
+    .main-content { margin-top: 60px; }
     
     /* Buttons Styling */
     div.stButton > button:first-child, div.stDownloadButton > button:first-child {
@@ -42,9 +59,9 @@ st.markdown("""
     }
     div.stButton > button:hover, div.stDownloadButton > button:hover { background-color: var(--buddy-green) !important; color: white !important; }
     
-    /* Sidebar Tight Spacing & Alignment */
+    /* Sidebar Spacing */
     [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
-        gap: 0.15rem !important; /* Adjusted to 0.15rem as requested */
+        gap: 0.2rem !important; /* Adjusted to 0.2rem */
     }
 
     .del-btn > div > button {
@@ -111,7 +128,7 @@ if check_password():
                 st.session_state.active_project = proj
                 st.rerun()
             
-            # Delete Button (The tiny cross)
+            # Delete Button
             if len(st.session_state.projects) > 1:
                 st.markdown('<div class="del-btn">', unsafe_allow_html=True)
                 if cols[1].button("×", key=f"del_{proj}", help=f"Delete {proj}"):
@@ -129,13 +146,14 @@ if check_password():
         st.markdown(f'<h1 style="margin:0; font-size: 1.8rem; color:#0000FF;">📚 {st.session_state.active_project}</h1>', unsafe_allow_html=True)
         st.markdown('<p style="color:#18A48C; margin-bottom:5px; font-weight: bold;">PhD-Level Analysis Mode</p>', unsafe_allow_html=True)
     with head_col2:
-        st.write("##") # Alignment
+        st.write("##") # Spacer for alignment
         if st.button("💾 Save Progress"):
             save_data(st.session_state.projects)
             st.toast("Project Saved!", icon="✅")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    st.write("##")
+    # --- MAIN CONTENT ---
+    # Removed the extra st.write("##") spacers that were adding gaps
     st.markdown('<div class="main-content">', unsafe_allow_html=True)
     
     api_key = st.secrets.get("GEMINI_API_KEY")
