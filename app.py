@@ -4,14 +4,13 @@ from pypdf import PdfReader
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
 import re
-import time
 import json
 import os
 
 # 1. PAGE CONFIGURATION
 st.set_page_config(page_title="Literature Review Buddy", page_icon="📚", layout="wide")
 
-# 2. STORAGE LOGIC (New)
+# 2. STORAGE LOGIC
 DB_FILE = "buddy_library.json"
 
 def load_data():
@@ -53,14 +52,16 @@ st.markdown("""
         box-shadow: none !important;
     }
 
+    /* Sticky Header */
     .sticky-wrapper {
         position: fixed; top: 0; left: 0; width: 100%;
         background-color: white; z-index: 1000;
-        padding: 10px 50px 0px 50px;
+        padding: 15px 50px 10px 50px;
         border-bottom: 2px solid #f0f2f6;
     }
     
-    .main-content { margin-top: -75px; }
+    /* Adjust content to not hide behind header */
+    .main-content { margin-top: 100px; }
     .block-container { padding-top: 0rem !important; }
 
     /* UNIFIED BUTTON STYLING */
@@ -91,6 +92,19 @@ st.markdown("""
         color: white !important;
         background: #ff4b4b !important;
     }
+    
+    /* Right Align Save Button */
+    .save-container {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        width: 100%;
+    }
+    .save-container button {
+        width: auto !important;
+        border: none !important;
+        font-size: 1.5rem !important;
+    }
 
     .section-title { font-weight: bold; color: #0000FF; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
     .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
@@ -120,12 +134,11 @@ def check_password():
 if check_password():
     api_key = st.secrets.get("GEMINI_API_KEY")
 
-    # --- NEW: LOAD PROJECTS FROM FILE ---
+    # LOAD PROJECTS
     if 'projects' not in st.session_state:
         st.session_state.projects = load_data()
     
     if 'active_project' not in st.session_state:
-        # Default to the first available project
         if st.session_state.projects:
             st.session_state.active_project = list(st.session_state.projects.keys())[0]
         else:
@@ -135,13 +148,13 @@ if check_password():
 
     if 'processed_filenames' not in st.session_state: st.session_state.processed_filenames = set() 
 
-    # --- SIDEBAR: PROJECT MANAGEMENT ---
+    # --- SIDEBAR: PROJECT MANAGER ---
     with st.sidebar:
-        st.title("📁 Research Manager")
+        st.title("🗂️ Project Manager")
         
-        # Create New Project
+        # Create New Project (Full Width)
         new_proj_name = st.text_input("New Project Name", placeholder="e.g. AI Ethics 2026")
-        if st.button("➕ Create Project"):
+        if st.button("➕ Create Project", use_container_width=True):
             if new_proj_name and new_proj_name not in st.session_state.projects:
                 st.session_state.projects[new_proj_name] = []
                 st.session_state.active_project = new_proj_name
@@ -174,90 +187,92 @@ if check_password():
                         st.rerun()
                     st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- MAIN PAGE ---
-    st.markdown(f'''
-        <div class="sticky-wrapper">
+    # --- MAIN PAGE HEADER ---
+    # Using columns inside the sticky wrapper to align Title (Left) and Save (Right)
+    st.markdown('<div class="sticky-wrapper">', unsafe_allow_html=True)
+    h_col1, h_col2 = st.columns([6, 1])
+    
+    with h_col1:
+        st.markdown(f'''
             <h1 style="margin:0; font-size: 1.8rem; color:#0000FF;">📚 Literature Review Buddy</h1>
             <p style="color:#18A48C; margin-bottom:5px; font-weight: bold;">Active Project: {st.session_state.active_project}</p>
-        </div>
-    ''', unsafe_allow_html=True)
+        ''', unsafe_allow_html=True)
+    
+    with h_col2:
+        st.markdown('<div class="save-container">', unsafe_allow_html=True)
+        if st.button("💾", help="Save Progress"):
+            save_data(st.session_state.projects)
+            st.toast("Project saved!", icon="✅")
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+    st.markdown('</div>', unsafe_allow_html=True)
 
+    # --- MAIN CONTENT ---
     with st.container():
-        st.write("##") 
         st.markdown('<div class="main-content">', unsafe_allow_html=True)
         
-        # SAVE BUTTON (Permanently saves to JSON)
-        c1, c2 = st.columns([6, 1])
-        with c2:
-            if st.button("💾 Save Progress"):
-                save_data(st.session_state.projects)
-                st.toast("Project saved to disk!", icon="✅")
-
         llm = None
         if api_key:
             llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
 
-        uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
-        run_review = st.button("🔬 Analyse paper", use_container_width=True)
+        # --- UPLOAD SECTION (Now in Expander) ---
+        with st.expander("Upload and Analyse Papers", expanded=True):
+            uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
+            run_review = st.button("🔬 Analyse paper", use_container_width=True)
 
-        # --- ANALYSIS LOGIC ---
-        if uploaded_files and llm and run_review:
-            progress_text = st.empty()
-            # Check duplicates based on titles already in the ACTIVE project
-            current_project_data = st.session_state.projects[st.session_state.active_project]
-            
-            for i, file in enumerate(uploaded_files):
-                if file.name in st.session_state.processed_filenames: continue
+            if uploaded_files and llm and run_review:
+                progress_text = st.empty()
+                current_project_data = st.session_state.projects[st.session_state.active_project]
                 
-                progress_text.text(f"📖 Critically reviewing: {file.name}...")
-                try:
-                    reader = PdfReader(file) 
-                    text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
+                for i, file in enumerate(uploaded_files):
+                    if file.name in st.session_state.processed_filenames: continue
                     
-                    prompt = f"""
-                    You are a PhD Candidate performing a Systematic Literature Review. Analyze the provided text with extreme academic rigour.
-                    Avoid excessive use of commas; provide fluid, sophisticated academic prose.
-                    Structure your response using ONLY these labels:
-                    [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
+                    progress_text.text(f"📖 Critically reviewing: {file.name}...")
+                    try:
+                        reader = PdfReader(file) 
+                        text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
+                        
+                        prompt = f"""
+                        You are a PhD Candidate performing a Systematic Literature Review. Analyze the provided text with extreme academic rigour.
+                        Avoid excessive use of commas; provide fluid, sophisticated academic prose.
+                        Structure your response using ONLY these labels:
+                        [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
 
-                    Requirements:
-                    - [METHODOLOGY]: Design critique, sampling, and statistical validity.
-                    - [RELIABILITY]: Discuss internal/external validity and potential biases.
-                    - No bolding (**). No lists. Use sophisticated academic prose.
+                        Requirements:
+                        - [METHODOLOGY]: Design critique, sampling, and statistical validity.
+                        - [RELIABILITY]: Discuss internal/external validity and potential biases.
+                        - No bolding (**). No lists. Use sophisticated academic prose.
 
-                    FULL TEXT: {text[:30000]} 
-                    """
-                    
-                    res = llm.invoke([HumanMessage(content=prompt)]).content
-                    res = re.sub(r'\*', '', res) 
+                        FULL TEXT: {text[:30000]} 
+                        """
+                        
+                        res = llm.invoke([HumanMessage(content=prompt)]).content
+                        res = re.sub(r'\*', '', res) 
 
-                    def ext(label, next_l=None):
-                        p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
-                        m = re.search(p, res, re.DOTALL | re.IGNORECASE)
-                        return m.group(1).strip() if m else "Not found."
+                        def ext(label, next_l=None):
+                            p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
+                            m = re.search(p, res, re.DOTALL | re.IGNORECASE)
+                            return m.group(1).strip() if m else "Not found."
 
-                    # Append to the ACTIVE project list
-                    st.session_state.projects[st.session_state.active_project].append({
-                        "#": len(st.session_state.projects[st.session_state.active_project]) + 1,
-                        "Title": ext("TITLE", "AUTHORS"),
-                        "Authors": ext("AUTHORS", "YEAR"),
-                        "Year": ext("YEAR", "REFERENCE"),
-                        "Reference": ext("REFERENCE", "SUMMARY"),
-                        "Summary": ext("SUMMARY", "BACKGROUND"),
-                        "Background": ext("BACKGROUND", "METHODOLOGY"),
-                        "Methodology": ext("METHODOLOGY", "CONTEXT"),
-                        "Context": ext("CONTEXT", "FINDINGS"),
-                        "Findings": ext("FINDINGS", "RELIABILITY"),
-                        "Reliability": ext("RELIABILITY")
-                    })
-                    st.session_state.processed_filenames.add(file.name)
-                except Exception as e: st.error(f"Error on {file.name}: {e}")
-            progress_text.empty()
-            # Auto-save after analysis
-            save_data(st.session_state.projects)
+                        st.session_state.projects[st.session_state.active_project].append({
+                            "#": len(st.session_state.projects[st.session_state.active_project]) + 1,
+                            "Title": ext("TITLE", "AUTHORS"),
+                            "Authors": ext("AUTHORS", "YEAR"),
+                            "Year": ext("YEAR", "REFERENCE"),
+                            "Reference": ext("REFERENCE", "SUMMARY"),
+                            "Summary": ext("SUMMARY", "BACKGROUND"),
+                            "Background": ext("BACKGROUND", "METHODOLOGY"),
+                            "Methodology": ext("METHODOLOGY", "CONTEXT"),
+                            "Context": ext("CONTEXT", "FINDINGS"),
+                            "Findings": ext("FINDINGS", "RELIABILITY"),
+                            "Reliability": ext("RELIABILITY")
+                        })
+                        st.session_state.processed_filenames.add(file.name)
+                    except Exception as e: st.error(f"Error on {file.name}: {e}")
+                progress_text.empty()
+                save_data(st.session_state.projects)
 
         # --- DISPLAY LOGIC ---
-        # Get data for the ACTIVE project
         active_data = st.session_state.projects[st.session_state.active_project]
 
         if active_data:
@@ -283,7 +298,6 @@ if check_password():
                 df = pd.DataFrame(active_data)
                 st.dataframe(df, use_container_width=True, hide_index=True)
                 
-                # --- FULL WIDTH EXPORT BUTTON ---
                 csv = df.to_csv(index=False).encode('utf-8-sig')
                 st.download_button(
                     label="📊 Export as CSV file",
