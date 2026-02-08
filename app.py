@@ -52,7 +52,7 @@ def save_full_library(library):
         except Exception as e:
             st.error(f"⚠️ Storage Error: {e}")
 
-# 3. STYLING (Restored 100% Original Visuals)
+# 3. STYLING
 st.markdown("""
 <style>
 [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
@@ -80,8 +80,7 @@ if "password_correct" not in st.session_state:
         if pwd == "M1chaelL1tRev1ewTool2026!":
             st.session_state["password_correct"] = True
             st.rerun()
-        else:
-            st.error("🚫 Access Denied")
+        else: st.error("🚫 Access Denied")
     st.stop()
 
 # 5. MAIN LOGIC
@@ -100,9 +99,7 @@ if st.session_state.active_project is None:
         if c2.button("➕ Create Project", use_container_width=True):
             if new_name and new_name not in st.session_state.projects:
                 st.session_state.projects[new_name] = {"papers": [], "last_accessed": time.time()}
-                save_full_library(st.session_state.projects)
-                st.session_state.active_project = new_name
-                st.rerun()
+                save_full_library(st.session_state.projects); st.session_state.active_project = new_name; st.rerun()
 
     projects = list(st.session_state.projects.keys())
     if projects:
@@ -117,9 +114,7 @@ if st.session_state.active_project is None:
                             st.session_state.projects[new_name_val] = st.session_state.projects.pop(proj_name)
                             save_full_library(st.session_state.projects); st.session_state.renaming_project = None; st.rerun()
                     with r_col3: 
-                        if st.button("❌", key=f"c_{proj_name}"): 
-                            st.session_state.renaming_project = None
-                            st.rerun()
+                        if st.button("❌", key=f"c_{proj_name}"): st.session_state.renaming_project = None; st.rerun()
                 else:
                     col_name, col_spacer, col_edit, col_del, col_open = st.columns([6, 1.5, 0.5, 0.5, 0.5])
                     with col_name:
@@ -148,28 +143,47 @@ else:
     st.markdown('<div class="upload-pull-up">', unsafe_allow_html=True)
     llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
     uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
-    if st.button("🔬 Analyse paper", use_container_width=True) and uploaded_files:
-        for file in uploaded_files:
-            reader = PdfReader(file)
-            text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
-            prompt = (
-                "Act as a Senior Academic Researcher and PhD Supervisor specializing in Systematic Literature Reviews. "
-                "Evaluate the logic, methodology, and contribution to the field. "
-                "Carefully analyze the text and extract for the following categories:\n\n"
-                "[TITLE]: The full title.\n[AUTHORS]: All primary authors.\n[YEAR]: Year of publication.\n"
-                "[REFERENCE]: Full Harvard-style citation.\n[SUMMARY]: Concise overview.\n"
-                "[BACKGROUND]: Gap and framework.\n[METHODOLOGY]: Design, N=, tools.\n[CONTEXT]: Location/population.\n"
-                "[FINDINGS]: Specific results.\n[RELIABILITY]: Critique limitations.\n\n"
-                "RULES: Output ONLY bracketed labels. No bolding or bullets. TEXT: " + text[:30000]
-            )
-            res = llm.invoke([HumanMessage(content=prompt)]).content
-            res = re.sub(r'\*', '', res)
-            def ext(label):
-                m = re.search(rf"\[{label}\]\s*:?\s*(.*?)(?=\s*\[|$)", res, re.DOTALL | re.IGNORECASE)
-                return m.group(1).strip() if m else "Not explicitly stated."
-            new_paper = {"#": len(st.session_state.projects[st.session_state.active_project]["papers"]) + 1, "Title": ext("TITLE"), "Authors": ext("AUTHORS"), "Year": ext("YEAR"), "Reference": ext("REFERENCE"), "Summary": ext("SUMMARY"), "Background": ext("BACKGROUND"), "Methodology": ext("METHODOLOGY"), "Context": ext("CONTEXT"), "Findings": ext("FINDINGS"), "Reliability": ext("RELIABILITY")}
-            st.session_state.projects[st.session_state.active_project]["papers"].append(new_paper)
-        save_full_library(st.session_state.projects); st.rerun()
+    
+    if st.button("🔬 Analyse paper", use_container_width=True):
+        if uploaded_files:
+            progress_container = st.empty()
+            for file in uploaded_files:
+                progress_container.info(f"📖 Analysing: {file.name}...")
+                reader = PdfReader(file)
+                text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
+                
+                # Smarter PhD Prompt Framework
+                prompt = (
+                    "Act as a Senior Academic Researcher and PhD Supervisor specializing in Systematic Literature Reviews. "
+                    "Evaluate the logic, methodology, and contribution to the field. "
+                    "Carefully analyze the text and extract for the following categories:\n\n"
+                    "[TITLE]: The full title.\n[AUTHORS]: All primary authors.\n[YEAR]: Year of publication.\n"
+                    "[REFERENCE]: Full Harvard-style citation.\n[SUMMARY]: Concise overview.\n"
+                    "[BACKGROUND]: Gap and framework.\n[METHODOLOGY]: Design, N=, tools.\n[CONTEXT]: Location/population.\n"
+                    "[FINDINGS]: Specific results.\n[RELIABILITY]: Critique limitations.\n\n"
+                    "RULES: Output ONLY bracketed labels. No bolding or bullets. TEXT: " + text[:30000]
+                )
+                
+                res = llm.invoke([HumanMessage(content=prompt)]).content
+                res = re.sub(r'\*', '', res)
+                
+                def ext(label):
+                    m = re.search(rf"\[{label}\]\s*:?\s*(.*?)(?=\s*\[|$)", res, re.DOTALL | re.IGNORECASE)
+                    return m.group(1).strip() if m else "Not explicitly stated."
+                
+                new_paper = {
+                    "#": len(st.session_state.projects[st.session_state.active_project]["papers"]) + 1,
+                    "Title": ext("TITLE"), "Authors": ext("AUTHORS"), "Year": ext("YEAR"), 
+                    "Reference": ext("REFERENCE"), "Summary": ext("SUMMARY"), 
+                    "Background": ext("BACKGROUND"), "Methodology": ext("METHODOLOGY"), 
+                    "Context": ext("CONTEXT"), "Findings": ext("FINDINGS"), 
+                    "Reliability": ext("RELIABILITY")
+                }
+                st.session_state.projects[st.session_state.active_project]["papers"].append(new_paper)
+            
+            progress_container.empty()
+            save_full_library(st.session_state.projects)
+            st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
     papers_data = st.session_state.projects[st.session_state.active_project]["papers"]
