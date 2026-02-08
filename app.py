@@ -36,33 +36,36 @@ st.markdown("""
     .sticky-wrapper { position: fixed; top: 0; left: 0; width: 100%; background-color: white; z-index: 1000; padding: 10px 50px 0px 50px; border-bottom: 2px solid #f0f2f6; }
     .main-content { margin-top: -30px; }
     
-    /* Buttons Styling */
+    /* Standard Buttons */
     div.stButton > button:first-child, div.stDownloadButton > button:first-child {
         width: 100% !important; color: var(--buddy-green) !important; border: 1px solid var(--buddy-green) !important; font-weight: bold !important; background-color: transparent !important;
     }
     div.stButton > button:hover, div.stDownloadButton > button:hover { background-color: var(--buddy-green) !important; color: white !important; }
     
-    /* Sidebar Tight Spacing & Alignment */
-    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
-        gap: 0.4rem !important; 
-    }
+    /* Sidebar Tight Spacing */
+    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap: 0.4rem !important; }
 
-    /* CENTERED Icon Buttons for Sidebar */
+    /* INVISIBLE BUTTON BOX - JUST CLICKABLE EMOJI */
     .icon-btn > div > button {
         border: none !important;
-        background: transparent !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
         padding: 0px !important;
         font-size: 1.2rem !important;
         height: 38px !important;
         width: 100% !important;
         display: flex !important;
         align-items: center !important;
-        justify-content: center !important; /* Forces horizontal centering */
-        text-align: center !important;
+        justify-content: center !important;
     }
     
-    .del-btn-color > div > button:hover { background: rgba(255, 75, 75, 0.1) !important; border-radius: 4px !important; }
-    .edit-btn-color > div > button:hover { background: rgba(0, 0, 255, 0.05) !important; border-radius: 4px !important; }
+    /* Force transparency even on hover/focus to hide the "box" */
+    .icon-btn > div > button:hover, .icon-btn > div > button:active, .icon-btn > div > button:focus {
+        background-color: transparent !important;
+        color: inherit !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
 
     .section-title { font-weight: bold; color: #0000FF; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
     .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
@@ -106,28 +109,27 @@ if check_password():
         st.subheader("Your Projects")
         
         for proj in list(st.session_state.projects.keys()):
-            # Using [4, 1, 1] ratio to ensure icons have a square-ish centering box
+            # [Project Button, Edit Pencil, Delete Bin]
             cols = st.columns([4, 1, 1])
             is_active = (proj == st.session_state.active_project)
             label = f"📍 {proj}" if is_active else proj
             
-            # Project Selection
             if cols[0].button(label, key=f"sel_{proj}", use_container_width=True, type="primary" if is_active else "secondary"):
                 st.session_state.active_project = proj
                 st.rerun()
             
-            # Rename Pencil Button
+            # Pencil Emoji
             with cols[1]:
-                st.markdown('<div class="icon-btn edit-btn-color">', unsafe_allow_html=True)
-                if st.button("📝", key=f"edit_btn_{proj}", help=f"Rename {proj}"):
+                st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
+                if st.button("📝", key=f"edit_btn_{proj}"):
                     st.session_state[f"renaming_{proj}"] = True
                 st.markdown('</div>', unsafe_allow_html=True)
 
-            # Delete Bin Button
+            # Bin Emoji
             with cols[2]:
                 if len(st.session_state.projects) > 1:
-                    st.markdown('<div class="icon-btn del-btn-color">', unsafe_allow_html=True)
-                    if st.button("🗑️", key=f"del_{proj}", help=f"Delete {proj}"):
+                    st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
+                    if st.button("🗑️", key=f"del_{proj}"):
                         del st.session_state.projects[proj]
                         if is_active:
                             st.session_state.active_project = list(st.session_state.projects.keys())[0]
@@ -135,15 +137,14 @@ if check_password():
                         st.rerun()
                     st.markdown('</div>', unsafe_allow_html=True)
             
-            # Inline Rename Logic
+            # Inline Rename UI
             if st.session_state.get(f"renaming_{proj}", False):
-                new_name = st.text_input(f"New name", value=proj, key=f"input_{proj}", label_visibility="collapsed")
+                new_name = st.text_input(f"Rename to:", value=proj, key=f"input_{proj}", label_visibility="collapsed")
                 c1, c2 = st.columns(2)
                 if c1.button("Save", key=f"save_{proj}"):
-                    if new_name and new_name != proj and new_name not in st.session_state.projects:
+                    if new_name and new_name != proj:
                         st.session_state.projects[new_name] = st.session_state.projects.pop(proj)
-                        if is_active:
-                            st.session_state.active_project = new_name
+                        if is_active: st.session_state.active_project = new_name
                         save_data(st.session_state.projects)
                     st.session_state[f"renaming_{proj}"] = False
                     st.rerun()
