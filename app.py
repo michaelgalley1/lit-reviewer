@@ -54,36 +54,52 @@ def save_full_library(library):
             st.error(f"⚠️ Storage Error: {e}")
             return False
 
-# 3. STYLING (Fixed Borders & Hover States)
+# 3. GLOBAL BRANDING & STYLING
 st.markdown("""
 <style>
 [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
 :root { --buddy-green: #18A48C; --buddy-blue: #0000FF; }
 [data-testid="block-container"] { padding-top: 0rem !important; }
 
-/* Unified Green Border for all Input Boxes */
+/* 1. Global Input & Textarea Borders */
 div[data-baseweb="input"], div[data-baseweb="textarea"] {
-    border: 1px solid #18A48C !important;
+    border: 1px solid var(--buddy-green) !important;
 }
-
-/* Unified Green Hover/Focus Highlight */
 div[data-baseweb="input"]:hover, div[data-baseweb="textarea"]:hover,
 div[data-baseweb="input"]:focus-within, div[data-baseweb="textarea"]:focus-within {
-    border: 2px solid #18A48C !important;
+    border: 2px solid var(--buddy-green) !important;
     outline: none !important;
 }
 
-.section-title { font-weight: bold; color: #0000FF; margin-top: 1rem; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 0.06rem solid #eee; }
+/* 2. Global Button Hover State */
+button[kind="secondary"], button[kind="primary"] {
+    transition: background-color 0.3s, color 0.3s !important;
+}
+button:hover {
+    background-color: var(--buddy-green) !important;
+    border-color: var(--buddy-green) !important;
+    color: white !important;
+}
+
+/* 3. Tab Styling (Active state) */
+button[data-baseweb="tab"] {
+    color: #333 !important;
+}
+button[data-baseweb="tab"][aria-selected="true"] {
+    color: var(--buddy-green) !important;
+    border-bottom-color: var(--buddy-green) !important;
+}
+
+.section-title { font-weight: bold; color: var(--buddy-blue); margin-top: 1rem; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 0.06rem solid #eee; }
 .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
 
 .fixed-header-bg { position: fixed; top: 0; left: 0; width: 100%; height: 4.5rem; background: white; border-bottom: 0.125rem solid #f0f2f6; z-index: 1000; padding-left: 3.75rem; display: flex; align-items: center; }
-.fixed-header-text h1 { margin: 0; font-size: 2.2rem; color: #0000FF; }
+.fixed-header-text h1 { margin: 0; font-size: 2.2rem; color: var(--buddy-blue); }
 .upload-pull-up { margin-top: -3.0rem !important; }
 
-/* Simplified Synthesis Container (No extra bars) */
 .synth-area { padding: 10px 0px; margin-top: 0px; }
-
 .icon-btn div[data-testid="stButton"] button { height: 38px !important; width: 38px !important; padding: 0 !important; border: none !important; background: transparent !important; }
+.icon-btn div[data-testid="stButton"] button:hover { background: #f0f2f6 !important; color: var(--buddy-green) !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -166,28 +182,9 @@ else:
                 progress_container.info(f"📖 Analysing: {file.name}...")
                 reader = PdfReader(file)
                 text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
-                
-                # REFINED PROMPT: Increased instruction clarity for better reading
-                prompt = (
-                    "You are a Senior PhD Supervisor. Perform a deep critical analysis of the provided text. "
-                    "Extract precisely the following categories. If a specific section is missing, infer logically from the text or state 'Not explicitly mentioned'.\n\n"
-                    "[TITLE]: The full title.\n"
-                    "[AUTHORS]: Primary authors.\n"
-                    "[YEAR]: Publication year.\n"
-                    "[REFERENCE]: Harvard-style citation.\n"
-                    "[SUMMARY]: 2-sentence overview.\n"
-                    "[BACKGROUND]: The research gap and theory.\n"
-                    "[METHODOLOGY]: Design, N=, and tools.\n"
-                    "[CONTEXT]: Setting and population.\n"
-                    "[FINDINGS]: Core results and significance.\n"
-                    "[RELIABILITY]: Critique of limitations/bias.\n\n"
-                    "FORMATTING: Output ONLY the labels in brackets followed by text. No bolding. No bullet points.\n\n"
-                    "TEXT TO ANALYZE: " + text[:35000]
-                )
-                
+                prompt = "Act as Senior PhD Supervisor. Deep analysis: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. NO BOLD/BULLETS. TEXT: " + text[:35000]
                 res = llm.invoke([HumanMessage(content=prompt)]).content
                 res = re.sub(r'\*', '', res)
-                
                 def ext(label):
                     m = re.search(rf"\[{label}\]\s*:?\s*(.*?)(?=\s*\[|$)", res, re.DOTALL | re.IGNORECASE)
                     return m.group(1).strip() if m else "Not explicitly stated."
@@ -199,7 +196,6 @@ else:
                 new_paper = {"#": len(st.session_state.projects[st.session_state.active_project]["papers"]) + 1, "Title": ext_title, "Authors": ext("AUTHORS"), "Year": ext("YEAR"), "Reference": ext("REFERENCE"), "Summary": ext("SUMMARY"), "Background": ext("BACKGROUND"), "Methodology": ext("METHODOLOGY"), "Context": ext("CONTEXT"), "Findings": ext("FINDINGS"), "Reliability": ext("RELIABILITY")}
                 st.session_state.projects[st.session_state.active_project]["papers"].append(new_paper)
                 st.session_state.processed_filenames.add(file.name)
-            
             progress_container.empty()
             save_full_library(st.session_state.projects); st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
@@ -237,15 +233,9 @@ else:
                     with st.spinner("PhD Buddy is synthesizing themes..."):
                         evidence = "".join([f"Paper {r.get('#')}: {r.get('Findings')}\n" for r in papers_data])
                         synthesis_prompt = (
-                            "Act as a PhD Supervisor. Synthesize the findings provided. "
-                            "Use emojis for each heading and maintain a professional academic tone. "
-                            "Structure the response with these EXACT headings:\n\n"
-                            "📋 **Overview of papers**\n\n"
-                            "🤝 **Overlaps in their findings**\n\n"
-                            "⚔️ **Contradictions in their findings**\n\n"
-                            "🚀 **Suggestions for future research**\n\n"
-                            "📝 **Summary of synthesis**\n\n"
-                            f"DATA:\n{evidence}"
+                            "Act as a PhD Supervisor. Synthesize findings using emojis for each heading. "
+                            "Structure: 📋 Overview of papers, 🤝 Overlaps, ⚔️ Contradictions, 🚀 Future research, 📝 Summary."
+                            f"\n\nDATA:\n{evidence}"
                         )
                         res = llm.invoke([HumanMessage(content=synthesis_prompt)]).content
                         st.session_state[f"synth_{st.session_state.active_project}"] = res
