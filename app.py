@@ -47,13 +47,21 @@ st.markdown("""
         width: 100%; 
         background-color: white; 
         z-index: 1000; 
-        padding: 15px 50px 10px 50px; 
+        padding: 15px 50px 15px 50px; 
         border-bottom: 2px solid #f0f2f6; 
     }
     
-    /* Main Content */
+    /* App Brand Title */
+    .app-brand {
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 5px;
+    }
+
+    /* Main Content Spacing - Increased to clear the taller header */
     .main-content { 
-        margin-top: 100px; 
+        margin-top: 140px; 
     }
     
     /* General Button Styling */
@@ -86,8 +94,10 @@ st.markdown("""
     /* Save Button Alignment (Right) */
     .save-btn-container {
         display: flex;
-        justify-content: flex-end; /* Pushes content to the right */
+        justify-content: flex-end; 
         width: 100%;
+        align-items: center;
+        height: 100%;
     }
     .save-btn-container button {
         border: none !important;
@@ -159,9 +169,13 @@ if check_password():
 
     # --- HEADER ---
     st.markdown('<div class="sticky-wrapper">', unsafe_allow_html=True)
+    # The new App Brand Title
+    st.markdown('<div class="app-brand">📚 Literature Review Buddy</div>', unsafe_allow_html=True)
+    
     head_col1, head_col2 = st.columns([4, 1])
     with head_col1:
-        st.markdown(f'<h1 style="margin:0; font-size: 1.8rem; color:#0000FF;">📚 {st.session_state.active_project}</h1>', unsafe_allow_html=True)
+        # Project Name (Emoji Removed)
+        st.markdown(f'<h1 style="margin:0; font-size: 2rem; color:#0000FF;">{st.session_state.active_project}</h1>', unsafe_allow_html=True)
         st.markdown('<p style="color:#18A48C; margin:0; font-weight: bold; font-size: 0.9rem;">PhD-Level Analysis Mode</p>', unsafe_allow_html=True)
     with head_col2:
         st.markdown('<div class="save-btn-container">', unsafe_allow_html=True)
@@ -177,7 +191,7 @@ if check_password():
     api_key = st.secrets.get("GEMINI_API_KEY")
     llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1) if api_key else None
 
-    # --- UPLOAD SECTION (IN DROPDOWN) ---
+    # --- UPLOAD SECTION ---
     with st.expander("Upload and Analyse Papers", expanded=True):
         uploaded_files = st.file_uploader("Upload papers (PDF)", type="pdf", accept_multiple_files=True)
         run_review = st.button("🔬 Analyse paper", use_container_width=True)
