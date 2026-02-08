@@ -47,20 +47,20 @@ st.markdown("""
         gap: 0.4rem !important; 
     }
 
-    /* Icon Buttons (Delete and Rename) */
+    /* Smaller Icon Buttons for Sidebar */
     .icon-btn > div > button {
         border: none !important;
         background: transparent !important;
         padding: 0px !important;
-        line-height: 1 !important;
+        font-size: 1.1rem !important;
         height: 38px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
     
-    .del-btn-color > div > button { color: #ff4b4b !important; }
-    .del-btn-color > div > button:hover { color: #b30000 !important; }
-    
-    .edit-btn-color > div > button { color: #666 !important; }
-    .edit-btn-color > div > button:hover { color: var(--buddy-blue) !important; }
+    .del-btn-color > div > button:hover { background: rgba(255, 75, 75, 0.1) !important; }
+    .edit-btn-color > div > button:hover { background: rgba(0, 0, 255, 0.05) !important; }
 
     .section-title { font-weight: bold; color: #0000FF; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
     .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
@@ -104,8 +104,8 @@ if check_password():
         st.subheader("Your Projects")
         
         for proj in list(st.session_state.projects.keys()):
-            # Using 3 columns now: 1 for selection, 1 for rename, 1 for delete
-            cols = st.columns([4, 0.7, 0.7])
+            # Using slightly narrower columns for icons to keep them tight
+            cols = st.columns([4.5, 0.6, 0.6])
             is_active = (proj == st.session_state.active_project)
             label = f"📍 {proj}" if is_active else proj
             
@@ -114,18 +114,18 @@ if check_password():
                 st.session_state.active_project = proj
                 st.rerun()
             
-            # Rename Button
+            # Rename Pencil Button
             with cols[1]:
                 st.markdown('<div class="icon-btn edit-btn-color">', unsafe_allow_html=True)
-                if st.button("✏️", key=f"edit_btn_{proj}", help=f"Rename {proj}"):
+                if st.button("📝", key=f"edit_btn_{proj}", help=f"Rename {proj}"):
                     st.session_state[f"renaming_{proj}"] = True
                 st.markdown('</div>', unsafe_allow_html=True)
 
-            # Delete Button
-            if len(st.session_state.projects) > 1:
-                with cols[2]:
+            # Delete Bin Button
+            with cols[2]:
+                if len(st.session_state.projects) > 1:
                     st.markdown('<div class="icon-btn del-btn-color">', unsafe_allow_html=True)
-                    if st.button("×", key=f"del_{proj}", help=f"Delete {proj}"):
+                    if st.button("🗑️", key=f"del_{proj}", help=f"Delete {proj}"):
                         del st.session_state.projects[proj]
                         if is_active:
                             st.session_state.active_project = list(st.session_state.projects.keys())[0]
@@ -133,13 +133,12 @@ if check_password():
                         st.rerun()
                     st.markdown('</div>', unsafe_allow_html=True)
             
-            # Inline Rename Input (shows only when pencil is clicked)
+            # Inline Rename Logic
             if st.session_state.get(f"renaming_{proj}", False):
-                new_name = st.text_input(f"New name for {proj}", value=proj, key=f"input_{proj}", label_visibility="collapsed")
+                new_name = st.text_input(f"New name", value=proj, key=f"input_{proj}", label_visibility="collapsed")
                 c1, c2 = st.columns(2)
                 if c1.button("Save", key=f"save_{proj}"):
-                    if new_name and new_name != proj:
-                        # Swap keys in dictionary while preserving data
+                    if new_name and new_name != proj and new_name not in st.session_state.projects:
                         st.session_state.projects[new_name] = st.session_state.projects.pop(proj)
                         if is_active:
                             st.session_state.active_project = new_name
