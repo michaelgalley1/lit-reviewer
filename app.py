@@ -50,37 +50,42 @@ st.markdown("""
 }
 
 /* -------------------------
-   ADVANCED BUTTON CENTERING
+   FINAL CENTERING OVERRIDE
    ------------------------- */
-/* This targets the button and its internal Streamlit structure */
+/* Targeted Icon Button Styling */
+.icon-btn div[data-testid="stButton"] {
+    display: flex;
+    justify-content: center;
+}
+
 .icon-btn div[data-testid="stButton"] button {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+    height: 38px !important;
+    width: 38px !important;
+    min-height: 38px !important;
+    min-width: 38px !important;
     padding: 0 !important;
     margin: 0 !important;
-    height: 40px !important;
-    width: 40px !important;
-    min-height: 40px !important;
-    min-width: 40px !important;
-    line-height: 1 !important;
-    background: transparent !important;
     border: none !important;
+    background: transparent !important;
 }
 
-/* Force the text/emoji container inside the button to have no margins */
-.icon-btn div[data-testid="stButton"] button div p {
+/* Deep override of the Streamlit label inside the button */
+.icon-btn div[data-testid="stButton"] button div[data-testid="stMarkdownContainer"] p {
+    font-size: 1.2rem !important; /* Slightly smaller for room */
+    line-height: 1 !important;
     margin: 0 !important;
     padding: 0 !important;
-    line-height: 1 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+    text-align: center !important;
+    display: block !important;
+    width: 100% !important;
 }
 
 .icon-btn button:hover {
     background: #f0f2f6 !important;
-    border-radius: 0.3rem !important;
+    border-radius: 5px !important;
 }
 
 .bin-btn button:hover { color: red !important; background: #ffe6e6 !important; }
@@ -121,7 +126,7 @@ st.markdown("""
 [data-testid="stTextInput"] div[data-baseweb="input"] { border: 0.06rem solid #d3d3d3 !important; }
 [data-testid="stTextInput"] div[data-baseweb="input"]:focus-within { border: 0.125rem solid var(--buddy-green) !important; }
 
-/* Main Action Buttons */
+/* Main Action Buttons (Save/Library) */
 div[data-testid="stButton"] > button:not([kind="secondary"]) {
     border: 0.06rem solid var(--buddy-green) !important;
     color: var(--buddy-green) !important;
