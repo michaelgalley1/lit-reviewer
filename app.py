@@ -30,11 +30,11 @@ def save_data(data):
 # 3. STYLING
 st.markdown("""
     <style>
-    /* Global fixes */
     .stApp a.header-anchor { display: none !important; }
     [data-testid="stDecoration"] { display: none !important; }
+    :root { --buddy-green: #18A48C; --buddy-blue: #0000FF; }
     
-    /* The Header Container */
+    /* Header Container */
     .header-box {
         position: fixed;
         top: 0;
@@ -42,31 +42,41 @@ st.markdown("""
         right: 0;
         background-color: white;
         z-index: 999;
-        padding: 40px 50px 10px 50px; /* Added top padding to clear browser chrome */
+        padding: 50px 50px 15px 50px;
         border-bottom: 2px solid #f0f2f6;
     }
 
-    /* Pushing content down so it doesn't hide under the header */
-    .main-content-wrapper {
-        margin-top: 130px; 
+    /* Content Clearance */
+    .main-content-wrapper { margin-top: 140px; }
+
+    /* Title Button Styling - Large Blue Font */
+    .rename-trigger button {
+        background: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+        text-align: left !important;
+        font-size: 2.2rem !important;
+        font-weight: bold !important;
+        color: #0000FF !important;
+        box-shadow: none !important;
+        line-height: 1.2 !important;
     }
 
-    /* Title Styling */
-    .project-title-text {
-        color: #0000FF;
-        font-size: 2rem;
-        font-weight: bold;
-        cursor: pointer;
-        margin: 0;
+    /* Save Button Alignment */
+    .save-container {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        height: 100%;
     }
 
-    /* Button Tweak */
-    div.stButton > button {
-        border-radius: 4px !important;
-    }
+    /* Sidebar Spacing Restored */
+    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap: 0.4rem !important; }
     
-    /* Sidebar spacing */
-    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap: 0.3rem !important; }
+    div.stButton > button:first-child {
+        width: 100% !important; color: var(--buddy-green) !important; border: 1px solid var(--buddy-green) !important; font-weight: bold !important;
+    }
+    .del-btn > div > button { border: none !important; color: #ff4b4b !important; background: transparent !important; padding: 0px !important; height: 38px !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -88,73 +98,80 @@ if check_password():
     if 'projects' not in st.session_state: st.session_state.projects = load_data()
     if 'active_project' not in st.session_state: st.session_state.active_project = list(st.session_state.projects.keys())[0]
 
-    # --- SIDEBAR ---
+    # --- SIDEBAR (RESTORED TO PREVIOUS LIST STYLE) ---
     with st.sidebar:
-        st.title("📁 Projects")
-        new_name_input = st.text_input("New Review Name")
-        if st.button("➕ Create"):
-            if new_name_input and new_name_input not in st.session_state.projects:
-                st.session_state.projects[new_name_input] = []
-                st.session_state.active_project = new_name_input
+        st.title("📁 Research Manager")
+        new_proj_name = st.text_input("Name for New Review", placeholder="e.g. AI Ethics 2026")
+        if st.button("➕ Create Project"):
+            if new_proj_name and new_proj_name not in st.session_state.projects:
+                st.session_state.projects[new_proj_name] = []
+                st.session_state.active_project = new_proj_name
                 save_data(st.session_state.projects)
                 st.rerun()
         
         st.divider()
+        st.subheader("Your Projects")
         for proj in list(st.session_state.projects.keys()):
-            c1, c2 = st.columns([5, 1])
-            active = (proj == st.session_state.active_project)
-            if c1.button(f"📍 {proj}" if active else proj, key=f"s_{proj}", use_container_width=True, type="primary" if active else "secondary"):
+            cols = st.columns([5, 1])
+            is_active = (proj == st.session_state.active_project)
+            if cols[0].button(f"📍 {proj}" if is_active else proj, key=f"sel_{proj}", use_container_width=True, type="primary" if is_active else "secondary"):
                 st.session_state.active_project = proj
                 st.rerun()
-            if len(st.session_state.projects) > 1 and c2.button("×", key=f"d_{proj}"):
-                del st.session_state.projects[proj]
-                if active: st.session_state.active_project = list(st.session_state.projects.keys())[0]
-                save_data(st.session_state.projects)
-                st.rerun()
+            if len(st.session_state.projects) > 1:
+                with cols[1]:
+                    st.markdown('<div class="del-btn">', unsafe_allow_html=True)
+                    if st.button("×", key=f"del_{proj}"):
+                        del st.session_state.projects[proj]
+                        if is_active: st.session_state.active_project = list(st.session_state.projects.keys())[0]
+                        save_data(st.session_state.projects)
+                        st.rerun()
+                    st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- NEW FIXED HEADER ---
+    # --- HEADER ---
     st.markdown('<div class="header-box">', unsafe_allow_html=True)
-    h_col1, h_col2 = st.columns([4, 1])
+    head_col1, head_col2 = st.columns([3, 1]) # Column layout for alignment
     
-    with h_col1:
-        if st.session_state.get("editing_now", False):
+    with head_col1:
+        if st.session_state.get("editing_title", False):
             new_val = st.text_input("Rename", value=st.session_state.active_project, label_visibility="collapsed")
-            if st.button("✅ Save Name"):
+            if st.button("✅ Save"):
                 if new_val and new_val != st.session_state.active_project:
                     st.session_state.projects[new_val] = st.session_state.projects.pop(st.session_state.active_project)
                     st.session_state.active_project = new_val
                     save_data(st.session_state.projects)
-                st.session_state.editing_now = False
+                st.session_state.editing_title = False
                 st.rerun()
         else:
-            # Clickable Title
-            if st.button(f"📚 {st.session_state.active_project}", help="Click to rename", key="title_trigger", type="secondary"):
-                st.session_state.editing_now = True
+            st.markdown('<div class="rename-trigger">', unsafe_allow_html=True)
+            if st.button(f"{st.session_state.active_project}"):
+                st.session_state.editing_title = True
                 st.rerun()
-            st.markdown('<p style="color:#18A48C; font-weight: bold; margin:0;">PhD-Level Analysis Mode</p>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown('<p style="color:#18A48C; margin:0; font-weight: bold; font-size:0.9rem;">PhD-Level Analysis Mode</p>', unsafe_allow_html=True)
 
-    with h_col2:
-        st.write("##")
+    with head_col2:
+        st.markdown('<div class="save-container">', unsafe_allow_html=True)
         if st.button("💾 Save Project"):
             save_data(st.session_state.projects)
-            st.toast("Saved!")
+            st.toast("Saved!", icon="✅")
+        st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- MAIN CONTENT ---
+    # --- CONTENT ---
     st.markdown('<div class="main-content-wrapper">', unsafe_allow_html=True)
     
     api_key = st.secrets.get("GEMINI_API_KEY")
     llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1) if api_key else None
 
     with st.expander("➕ Upload & Analyse New Papers", expanded=True):
-        files = st.file_uploader("Drop PDFs", type="pdf", accept_multiple_files=True)
-        if st.button("🔬 Start PhD Analysis"):
-            if files and llm:
-                for f in files:
+        uploaded_files = st.file_uploader("Drop PDFs here", type="pdf", accept_multiple_files=True)
+        if st.button("🔬 Start PhD Analysis", use_container_width=True):
+            if uploaded_files and llm:
+                for file in uploaded_files:
                     try:
-                        reader = PdfReader(f)
+                        reader = PdfReader(file) 
                         text = "".join([p.extract_text() for p in reader.pages]).strip()
-                        prompt = f"Analyze: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. Prose only. TEXT: {text[:30000]}"
+                        prompt = f"Analyze as PhD: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. Prose only. TEXT: {text[:30000]}"
                         res = llm.invoke([HumanMessage(content=prompt)]).content
                         
                         def ext(label, next_l=None):
@@ -170,29 +187,28 @@ if check_password():
                             "Context": ext("CONTEXT", "FINDINGS"), "Findings": ext("FINDINGS", "RELIABILITY"),
                             "Reliability": ext("RELIABILITY")
                         })
-                    except: st.error(f"Failed to read {f.name}")
+                    except: st.error(f"Error reading {file.name}")
                 save_data(st.session_state.projects)
                 st.rerun()
 
-    data = st.session_state.projects[st.session_state.active_project]
-    if data:
+    current_data = st.session_state.projects[st.session_state.active_project]
+    if current_data:
         t1, t2, t3 = st.tabs(["🖼️ Card Gallery", "📊 Master Table", "🧠 Synthesis"])
         with t1:
-            for r in reversed(data):
+            for r in reversed(current_data):
                 with st.container(border=True):
-                    st.subheader(f"Ref {r['#']}: {r['Title']}")
-                    st.write(f"**Authors:** {r['Authors']} ({r['Year']})")
+                    cr, ct = st.columns([1, 12]); cr.metric("Ref", r['#']); ct.subheader(r['Title'])
                     st.divider()
                     for k, v in [("📝 Summary", r["Summary"]), ("⚙️ Methodology", r["Methodology"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]:
                         st.markdown(f"**{k}**")
                         st.write(v)
         with t2:
-            st.dataframe(pd.DataFrame(data), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(current_data), use_container_width=True, hide_index=True)
         with t3:
-            if len(data) > 1:
+            if len(current_data) > 1:
                 with st.spinner("Synthesizing..."):
-                    evidence = "".join([f"P{r['#']}: {r['Findings']}\n" for r in data])
-                    synth = llm.invoke([HumanMessage(content=f"Meta-Synthesis: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS].\n{evidence}")]).content
-                    st.write(synth)
+                    evidence = "".join([f"P{r['#']}: {r['Findings']}\n" for r in current_data])
+                    synth_res = llm.invoke([HumanMessage(content=f"Meta-Synthesis: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS].\n{evidence}")]).content
+                    st.write(synth_res)
 
     st.markdown('</div>', unsafe_allow_html=True)
