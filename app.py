@@ -42,25 +42,15 @@ st.markdown("""
     }
     div.stButton > button:hover, div.stDownloadButton > button:hover { background-color: var(--buddy-green) !important; color: white !important; }
     
-    /* Sidebar Tight Spacing & Alignment */
-    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
-        gap: 0.4rem !important; /* Reduces gap between project rows by ~50% */
-    }
-
+    /* Sidebar Delete Button Styling (Restored from your version) */
     .del-btn > div > button {
         border: none !important;
         color: #ff4b4b !important;
         background: transparent !important;
-        padding: 0px !important;
-        line-height: 1 !important;
-        height: 38px !important;
-        /* ALIGNMENT FIX: Manually nudges the button up to align with text */
-        position: relative !important;
-        top: -3px !important; 
     }
     .del-btn > div > button:hover {
-        color: #b30000 !important;
-        background: transparent !important;
+        color: white !important;
+        background: #ff4b4b !important;
     }
 
     .section-title { font-weight: bold; color: #0000FF; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
@@ -105,7 +95,7 @@ if check_password():
         st.subheader("Your Projects")
         
         for proj in list(st.session_state.projects.keys()):
-            cols = st.columns([5, 1])
+            cols = st.columns([4, 1]) # Restored 4:1 ratio
             is_active = (proj == st.session_state.active_project)
             label = f"📍 {proj}" if is_active else proj
             
@@ -114,17 +104,16 @@ if check_password():
                 st.session_state.active_project = proj
                 st.rerun()
             
-            # Delete Button
+            # Delete Button (Restored Logic)
             if len(st.session_state.projects) > 1:
-                with cols[1]:
-                    st.markdown('<div class="del-btn">', unsafe_allow_html=True)
-                    if st.button("×", key=f"del_{proj}", help=f"Delete {proj}"):
-                        del st.session_state.projects[proj]
-                        if is_active:
-                            st.session_state.active_project = list(st.session_state.projects.keys())[0]
-                        save_data(st.session_state.projects)
-                        st.rerun()
-                    st.markdown('</div>', unsafe_allow_html=True)
+                st.markdown('<div class="del-btn">', unsafe_allow_html=True)
+                if cols[1].button("×", key=f"del_{proj}", help=f"Delete {proj}"):
+                    del st.session_state.projects[proj]
+                    if is_active:
+                        st.session_state.active_project = list(st.session_state.projects.keys())[0]
+                    save_data(st.session_state.projects)
+                    st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
 
     # --- MAIN UI HEADER ---
     st.markdown('<div class="sticky-wrapper">', unsafe_allow_html=True)
