@@ -54,7 +54,7 @@ def save_full_library(library):
             st.error(f"⚠️ Storage Error: {e}")
             return False
 
-# 3. GLOBAL BRANDING & STYLING
+# 3. GLOBAL BRANDING & STYLING (Green Tabs, Fixed Grid, No Red Underline)
 st.markdown("""
 <style>
 [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
@@ -73,7 +73,7 @@ button:hover {
     color: white !important;
 }
 
-/* Tab Styling - Removing red underline and setting green active state */
+/* Tab Styling - Removing background hover and red underline */
 button[data-baseweb="tab"] {
     background-color: transparent !important;
 }
@@ -86,15 +86,10 @@ button[data-baseweb="tab"][aria-selected="true"] {
     border-bottom: 2px solid var(--buddy-green) !important;
 }
 
-/* Specific fix to hide the secondary red/gray underline from Streamlit */
+/* Specific CSS to hide the secondary red/gray underline from Streamlit */
 div[data-baseweb="tab-highlight"] {
     background-color: transparent !important;
     visibility: hidden !important;
-}
-
-/* Synthesis Grid Height Alignment */
-.stVerticalBlock div[data-testid="stMetric-container"] {
-    min-height: 250px !important;
 }
 
 /* Custom Card Style for Synthesis to ensure equal heights */
@@ -102,8 +97,9 @@ div[data-baseweb="tab-highlight"] {
     min-height: 280px;
     border: 1px solid #e6e9ef;
     border-radius: 0.5rem;
-    padding: 1rem;
+    padding: 1.2rem;
     background-color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
 }
 
 .section-title { font-weight: bold; color: var(--buddy-blue); margin-top: 1rem; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 0.06rem solid #eee; }
@@ -233,11 +229,10 @@ else:
             csv = df.to_csv(index=False).encode('utf-8')
             st.download_button("📥 Export to CSV", data=csv, file_name=f"{st.session_state.active_project}_review.csv", mime='text/csv')
         with t3:
-            # --- SYNTHESIS GRID VIEW WITH FIXED HEIGHT CARDS ---
+            # --- SYNTHESIS GRID VIEW (PhD Supervisor Instructions) ---
             synth_data = st.session_state.get(f"synth_dict_{st.session_state.active_project}", {})
             
             if synth_data:
-                # Row 1
                 c1, c2 = st.columns(2)
                 with c1:
                     st.markdown(f'<div class="synth-card">📋 <b>Overview of papers</b><br><br>{synth_data.get("overview", "...")}</div>', unsafe_allow_html=True)
@@ -245,7 +240,6 @@ else:
                     st.markdown(f'<div class="synth-card">🤝 <b>Overlaps in their findings</b><br><br>{synth_data.get("overlaps", "...")}</div>', unsafe_allow_html=True)
                 
                 st.markdown("<br>", unsafe_allow_html=True)
-                # Row 2
                 c3, c4 = st.columns(2)
                 with c3:
                     st.markdown(f'<div class="synth-card">⚔️ <b>Contradictions in their findings</b><br><br>{synth_data.get("contradictions", "...")}</div>', unsafe_allow_html=True)
@@ -253,7 +247,6 @@ else:
                     st.markdown(f'<div class="synth-card">🚀 <b>Suggestions for future research</b><br><br>{synth_data.get("future", "...")}</div>', unsafe_allow_html=True)
                 
                 st.markdown("<br>", unsafe_allow_html=True)
-                # Full width summary
                 st.markdown(f'<div class="synth-card" style="min-height: 150px;">📝 <b>Summary of synthesis</b><br><br>{synth_data.get("summary", "...")}</div>', unsafe_allow_html=True)
             else:
                 st.info("No synthesis generated yet.")
@@ -263,16 +256,20 @@ else:
             with sc2:
                 if st.button("🔄 Try Again", use_container_width=True):
                     with st.spinner("Synthesizing..."):
-                        evidence = "".join([f"Paper {r.get('#')}: {r.get('Findings')}\n" for r in papers_data])
+                        evidence = "".join([f"Paper {r.get('#')} - Title: {r.get('Title')}. Findings: {r.get('Findings')}\n" for r in papers_data])
+                        
+                        # THE PHD-LEVEL DETAILED PROMPT
                         prompt = (
-                            "Synthesize findings for a PhD review. Extract these exact parts:\n"
-                            "[OVERVIEW]: Overview of papers\n"
-                            "[OVERLAPS]: Overlaps in findings\n"
-                            "[CONTRADICTIONS]: Contradictions in findings\n"
-                            "[FUTURE]: Suggestions for future research\n"
-                            "[SUMMARY]: Summary of synthesis\n"
+                            "Act as a PhD Supervisor and Senior Researcher. Analyze the following project findings for a Systematic Literature Review. "
+                            "You must be critical and look for deep thematic connections. Extract these parts:\n\n"
+                            "[OVERVIEW]: Provide a high-level academic overview of the papers' collective focus.\n"
+                            "[OVERLAPS]: Identify 3-4 key thematic overlaps or supporting results shared across the papers.\n"
+                            "[CONTRADICTIONS]: Highlight any significant contradictions, debates, or conflicting methodologies.\n"
+                            "[FUTURE]: Identify the 'Research Gap' and suggest 3 concrete directions for future study.\n"
+                            "[SUMMARY]: Write a 4-sentence professional conclusion of the synthesis.\n\n"
                             "DATA: " + evidence
                         )
+                        
                         res = llm.invoke([HumanMessage(content=prompt)]).content
                         def get_p(lbl):
                             m = re.search(rf"\[{lbl}\]\s*:?\s*(.*?)(?=\s*\[|$)", res, re.DOTALL | re.IGNORECASE)
