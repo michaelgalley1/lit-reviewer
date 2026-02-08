@@ -45,7 +45,7 @@ st.markdown("""
 }
 
 [data-testid="block-container"] {
-    padding-top: 1rem !important;
+    padding-top: 0rem !important;
     padding-bottom: 2rem !important;
 }
 
@@ -79,7 +79,7 @@ st.markdown("""
     top: 0;
     left: 0;
     width: 100%;
-    height: 80px; 
+    height: 60px; /* Reduced height */
     background: white;
     border-bottom: 2px solid #f0f2f6;
     z-index: 1000;
@@ -88,9 +88,10 @@ st.markdown("""
     align-items: center;
 }
 
-.fixed-header-text h1 { margin: 0; font-size: 2.2rem; color: #0000FF; line-height: 1.1; }
+.fixed-header-text h1 { margin: 0; font-size: 1.8rem; color: #0000FF; line-height: 1.1; }
 
-.header-spacer { height: 80px; width: 100%; }
+/* Spacer to push content below fixed header - Reduced */
+.header-spacer { height: 40px; width: 100%; }
 
 .bottom-actions {
     margin-top: 10px;      
