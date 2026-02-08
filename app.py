@@ -47,20 +47,22 @@ st.markdown("""
         gap: 0.4rem !important; 
     }
 
-    /* Smaller Icon Buttons for Sidebar */
+    /* CENTERED Icon Buttons for Sidebar */
     .icon-btn > div > button {
         border: none !important;
         background: transparent !important;
         padding: 0px !important;
-        font-size: 1.1rem !important;
+        font-size: 1.2rem !important;
         height: 38px !important;
+        width: 100% !important;
         display: flex !important;
         align-items: center !important;
-        justify-content: center !important;
+        justify-content: center !important; /* Forces horizontal centering */
+        text-align: center !important;
     }
     
-    .del-btn-color > div > button:hover { background: rgba(255, 75, 75, 0.1) !important; }
-    .edit-btn-color > div > button:hover { background: rgba(0, 0, 255, 0.05) !important; }
+    .del-btn-color > div > button:hover { background: rgba(255, 75, 75, 0.1) !important; border-radius: 4px !important; }
+    .edit-btn-color > div > button:hover { background: rgba(0, 0, 255, 0.05) !important; border-radius: 4px !important; }
 
     .section-title { font-weight: bold; color: #0000FF; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
     .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
@@ -104,8 +106,8 @@ if check_password():
         st.subheader("Your Projects")
         
         for proj in list(st.session_state.projects.keys()):
-            # Using slightly narrower columns for icons to keep them tight
-            cols = st.columns([4.5, 0.6, 0.6])
+            # Using [4, 1, 1] ratio to ensure icons have a square-ish centering box
+            cols = st.columns([4, 1, 1])
             is_active = (proj == st.session_state.active_project)
             label = f"📍 {proj}" if is_active else proj
             
