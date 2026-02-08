@@ -33,13 +33,13 @@ st.markdown("""
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
     :root { --buddy-green: #18A48C; --buddy-blue: #0000FF; }
     
-    /* REMOVE ALL DEFAULT TOP PADDING */
+    /* REMOVE DEFAULT PADDING */
     [data-testid="block-container"] {
         padding-top: 0rem !important;
         margin-top: 0rem !important;
     }
 
-    /* Fixed Header */
+    /* FIXED HEADER CONTAINER */
     .sticky-wrapper { 
         position: fixed; 
         top: 0; 
@@ -47,21 +47,43 @@ st.markdown("""
         width: 100%; 
         background-color: white; 
         z-index: 1000; 
-        padding: 15px 50px 15px 50px; 
+        padding: 15px 50px 10px 50px; 
         border-bottom: 2px solid #f0f2f6; 
+        height: auto;
     }
     
-    /* App Brand Title */
+    /* App Title in Header */
     .app-brand {
-        font-size: 1.1rem;
+        font-size: 1.2rem;
         font-weight: bold;
         color: #333;
-        margin-bottom: 5px;
+        margin-bottom: 8px;
     }
 
-    /* Main Content Spacing - Increased to clear the taller header */
+    /* Main Content Spacing - Adjusted to pull content up */
     .main-content { 
-        margin-top: 140px; 
+        margin-top: 110px; /* Reduced from 140px to close the gap */
+    }
+    
+    /* RIGHT ALIGN SAVE BUTTON */
+    /* Forces the second column in the header row to align right */
+    .header-row [data-testid="column"]:nth-of-type(2) {
+        display: flex;
+        justify-content: flex-end !important;
+        align-items: center;
+    }
+    
+    /* Save Button Styling */
+    .save-btn-container button {
+        border: none !important;
+        font-size: 1.8rem !important;
+        padding: 0px !important;
+        background: transparent !important;
+        line-height: 1;
+    }
+    .save-btn-container button:hover {
+        background: transparent !important;
+        transform: scale(1.1);
     }
     
     /* General Button Styling */
@@ -89,26 +111,6 @@ st.markdown("""
     .del-btn > div > button:hover {
         color: #b30000 !important;
         background: transparent !important;
-    }
-
-    /* Save Button Alignment (Right) */
-    .save-btn-container {
-        display: flex;
-        justify-content: flex-end; 
-        width: 100%;
-        align-items: center;
-        height: 100%;
-    }
-    .save-btn-container button {
-        border: none !important;
-        font-size: 1.5rem !important;
-        padding: 0px !important;
-        background: transparent !important;
-        width: auto !important;
-    }
-    .save-btn-container button:hover {
-        background: transparent !important;
-        transform: scale(1.1);
     }
 
     .section-title { font-weight: bold; color: #0000FF; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
@@ -139,7 +141,8 @@ if check_password():
 
     # --- SIDEBAR ---
     with st.sidebar:
-        st.title("📁 Research Manager")
+        # 4. CHANGED EMOJI TO 🗂️
+        st.title("🗂️ Research Manager")
         new_proj_name = st.text_input("Name for New Review", placeholder="e.g. AI Ethics 2026", label_visibility="collapsed")
         if st.button("➕ Create Project"):
             if new_proj_name and new_proj_name not in st.session_state.projects:
@@ -167,25 +170,32 @@ if check_password():
                     st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- HEADER ---
+    # --- HEADER (Sticky) ---
     st.markdown('<div class="sticky-wrapper">', unsafe_allow_html=True)
-    # The new App Brand Title
+    # 1. FROZEN TITLE AT TOP
     st.markdown('<div class="app-brand">📚 Literature Review Buddy</div>', unsafe_allow_html=True)
     
+    # Using a container class 'header-row' to target columns with CSS
+    st.markdown('<div class="header-row">', unsafe_allow_html=True)
     head_col1, head_col2 = st.columns([4, 1])
+    
     with head_col1:
-        # Project Name (Emoji Removed)
         st.markdown(f'<h1 style="margin:0; font-size: 2rem; color:#0000FF;">{st.session_state.active_project}</h1>', unsafe_allow_html=True)
         st.markdown('<p style="color:#18A48C; margin:0; font-weight: bold; font-size: 0.9rem;">PhD-Level Analysis Mode</p>', unsafe_allow_html=True)
+    
     with head_col2:
+        # 3. RIGHT ALIGNED SAVE BUTTON
         st.markdown('<div class="save-btn-container">', unsafe_allow_html=True)
         if st.button("💾", help="Save Progress"):
             save_data(st.session_state.projects)
             st.toast("Project Saved!", icon="✅")
         st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True) # End header-row
+    st.markdown('</div>', unsafe_allow_html=True) # End sticky-wrapper
 
     # --- MAIN CONTENT ---
+    # 2. REDUCED GAP (margin-top handled in CSS)
     st.markdown('<div class="main-content">', unsafe_allow_html=True)
     
     api_key = st.secrets.get("GEMINI_API_KEY")
