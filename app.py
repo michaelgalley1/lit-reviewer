@@ -33,6 +33,9 @@ st.markdown("""
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
     :root { --buddy-green: #18A48C; --buddy-blue: #0000FF; }
     
+    /* Hide the default Streamlit anchor link on hover */
+    .stApp a.header-anchor { display: none !important; }
+    
     .sticky-wrapper { position: fixed; top: 0; left: 0; width: 100%; background-color: white; z-index: 1000; padding: 10px 50px 0px 50px; border-bottom: 2px solid #f0f2f6; }
     .main-content { margin-top: -30px; }
     
@@ -42,23 +45,14 @@ st.markdown("""
     }
     div.stButton > button:hover, div.stDownloadButton > button:hover { background-color: var(--buddy-green) !important; color: white !important; }
     
-    /* Sidebar Tight Spacing & Alignment */
-    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
-        gap: 0.4rem !important; /* Reduces gap between project rows by ~50% */
-    }
+    /* Sidebar Tight Spacing */
+    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap: 0.4rem !important; }
 
     .del-btn > div > button {
-        border: none !important;
-        color: #ff4b4b !important;
-        background: transparent !important;
-        padding: 0px !important;
-        line-height: 1 !important;
-        height: 38px !important; /* Matches standard button height for alignment */
+        border: none !important; color: #ff4b4b !important; background: transparent !important;
+        padding: 0px !important; line-height: 1 !important; height: 38px !important;
     }
-    .del-btn > div > button:hover {
-        color: #b30000 !important;
-        background: transparent !important;
-    }
+    .del-btn > div > button:hover { color: #b30000 !important; background: transparent !important; }
 
     .section-title { font-weight: bold; color: #0000FF; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
     .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
@@ -106,12 +100,10 @@ if check_password():
             is_active = (proj == st.session_state.active_project)
             label = f"📍 {proj}" if is_active else proj
             
-            # Project Selection Button
             if cols[0].button(label, key=f"sel_{proj}", use_container_width=True, type="primary" if is_active else "secondary"):
                 st.session_state.active_project = proj
                 st.rerun()
             
-            # Delete Button
             if len(st.session_state.projects) > 1:
                 with cols[1]:
                     st.markdown('<div class="del-btn">', unsafe_allow_html=True)
@@ -126,9 +118,31 @@ if check_password():
     # --- MAIN UI HEADER ---
     st.markdown('<div class="sticky-wrapper">', unsafe_allow_html=True)
     head_col1, head_col2 = st.columns([4, 1])
+    
     with head_col1:
-        st.markdown(f'<h1 style="margin:0; font-size: 1.8rem; color:#0000FF;">📚 {st.session_state.active_project}</h1>', unsafe_allow_html=True)
-        st.markdown('<p style="color:#18A48C; margin-bottom:5px; font-weight: bold;">PhD-Level Analysis Mode</p>', unsafe_allow_html=True)
+        # Edit/Rename Logic
+        if "editing_title" not in st.session_state: st.session_state.editing_title = False
+        
+        if st.session_state.editing_title:
+            edit_cols = st.columns([3, 1])
+            new_name = edit_cols[0].text_input("Rename project", value=st.session_state.active_project, label_visibility="collapsed")
+            if edit_cols[1].button("✅ Save"):
+                if new_name and new_name != st.session_state.active_project:
+                    st.session_state.projects[new_name] = st.session_state.projects.pop(st.session_state.active_project)
+                    st.session_state.active_project = new_name
+                    save_data(st.session_state.projects)
+                st.session_state.editing_title = False
+                st.rerun()
+        else:
+            title_cols = st.columns([0.9, 0.1, 9]) # Compact title + icon
+            with title_cols[0]:
+                st.markdown(f'<h1 style="margin:0; font-size: 1.8rem; color:#0000FF; white-space:nowrap;">📚 {st.session_state.active_project}</h1>', unsafe_allow_html=True)
+            with title_cols[1]:
+                if st.button("✏️", help="Rename this project", type="secondary"):
+                    st.session_state.editing_title = True
+                    st.rerun()
+            st.markdown('<p style="color:#18A48C; margin-bottom:5px; font-weight: bold;">PhD-Level Analysis Mode</p>', unsafe_allow_html=True)
+
     with head_col2:
         st.write("##") 
         if st.button("💾 Save Progress"):
@@ -136,6 +150,7 @@ if check_password():
             st.toast("Project Saved!", icon="✅")
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # --- CONTENT ---
     st.write("##")
     st.markdown('<div class="main-content">', unsafe_allow_html=True)
     
