@@ -49,12 +49,32 @@ st.markdown("""
     padding-bottom: 2rem !important;
 }
 
+/* -------------------------
+   INPUT BOX HOVER/FOCUS FIX
+   ------------------------- */
+/* Sets the border color for input boxes to green on hover and focus */
+[data-testid="stTextInput"] div[data-baseweb="input"] {
+    border: 1px solid #d3d3d3 !important;
+}
+[data-testid="stTextInput"] div[data-baseweb="input"]:hover {
+    border-color: var(--buddy-green) !important;
+}
+[data-testid="stTextInput"] div[data-baseweb="input"]:focus-within {
+    border: 2px solid var(--buddy-green) !important;
+}
+
+/* -------------------------
+   BUTTON HOVER LOGIC
+   ------------------------- */
 div[data-testid="stButton"] button:hover {
     background-color: var(--buddy-green) !important;
     color: white !important;
     border-color: var(--buddy-green) !important;
 }
 
+/* -------------------------
+   ICON BUTTONS (Library Page)
+   ------------------------- */
 .icon-btn div[data-testid="stButton"] button {
     display: flex !important;
     align-items: center !important;
@@ -66,10 +86,14 @@ div[data-testid="stButton"] button:hover {
     background: transparent !important;
 }
 
+/* -------------------------
+   CARD DELETE BUTTON (Bottom of Paper)
+   ------------------------- */
 .card-del-container {
     display: flex !important;
     justify-content: flex-end !important;
     width: 100% !important;
+    margin-top: 1.5rem !important;
 }
 
 .card-del-container div[data-testid="stButton"] button {
@@ -82,6 +106,9 @@ div[data-testid="stButton"] button:hover {
     min-width: 140px !important; 
 }
 
+/* -------------------------
+   PROJECT PAGE STYLES
+   ------------------------- */
 .fixed-header-bg {
     position: fixed;
     top: 0;
@@ -118,6 +145,7 @@ div[data-testid="stButton"] > button:not([kind="secondary"]) {
 }
 
 .section-title { font-weight: bold; color: #0000FF; margin-top: 1rem; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 0.06rem solid #eee; }
+.section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -273,25 +301,26 @@ if check_password():
                 for idx, r in enumerate(reversed(papers_data)):
                     real_idx = len(papers_data) - 1 - idx
                     with st.container(border=True):
-                        col_metric, col_title, col_del = st.columns([1, 10, 2])
-                        with col_metric: 
-                            # FIXED: Use '#' key instead of 'Ref'
-                            st.metric("Ref", r.get('#', real_idx + 1))
+                        # Layout Header
+                        col_metric, col_title = st.columns([1, 10])
+                        with col_metric: st.metric("Ref", r.get('#', real_idx + 1))
                         with col_title: st.subheader(r.get('Title', 'Untitled'))
-                        with col_del:
-                            st.markdown('<div class="card-del-container">', unsafe_allow_html=True)
-                            if st.button("🗑️ Delete Paper", key=f"del_paper_{real_idx}"):
-                                st.session_state.projects[st.session_state.active_project]["papers"].pop(real_idx)
-                                # Re-index
-                                for i, p in enumerate(st.session_state.projects[st.session_state.active_project]["papers"]): p["#"] = i + 1
-                                save_data(st.session_state.projects)
-                                st.rerun()
-                            st.markdown('</div>', unsafe_allow_html=True)
                         
                         st.markdown(f'<div>🖊️ Authors: {r.get("Authors", "N/A")}<br>🗓️ Year: {r.get("Year", "N/A")}<br>🔗 Full Citation: {r.get("Reference", "N/A")}</div>', unsafe_allow_html=True)
                         st.divider()
-                        sec = [("📝 Summary", r.get("Summary", "")), ("📖 Background", r.get("Background", "")), ("⚙️ Methodology", r.get("Methodology", "")), ("📍 Context", r.get("Context", "")), ("💡 Findings", r.get("Findings", "")), ("🛡️ Reliability", r.get("Reliability", ""))]
+                        
+                        sec = [("📝 Summary", r.get("Summary", "")), ("📖 Background", r.get("Background", "")), ("⚙️ Methodology", r.get("Methodology", "")), ("📍 Context", r.get("Context", "")), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]
                         for k, v in sec: st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
+                        
+                        # DELETE BUTTON MOVED TO BOTTOM
+                        st.markdown('<div class="card-del-container">', unsafe_allow_html=True)
+                        if st.button("🗑️ Delete Paper", key=f"del_paper_{real_idx}"):
+                            st.session_state.projects[st.session_state.active_project]["papers"].pop(real_idx)
+                            for i, p in enumerate(st.session_state.projects[st.session_state.active_project]["papers"]): p["#"] = i + 1
+                            save_data(st.session_state.projects)
+                            st.rerun()
+                        st.markdown('</div>', unsafe_allow_html=True)
+
             with t2:
                 df = pd.DataFrame(papers_data)
                 st.dataframe(df, use_container_width=True, hide_index=True)
