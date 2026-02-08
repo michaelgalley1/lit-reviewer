@@ -49,6 +49,22 @@ st.markdown("""
     padding-bottom: 2rem !important;
 }
 
+/* TAB STYLING - Green underline & Green text (Hiding default red) */
+button[data-baseweb="tab"] {
+    background-color: transparent !important;
+}
+button[data-baseweb="tab"]:hover {
+    color: var(--buddy-green) !important;
+}
+button[data-baseweb="tab"][aria-selected="true"] {
+    color: var(--buddy-green) !important;
+    border-bottom-color: var(--buddy-green) !important;
+}
+div[data-baseweb="tab-highlight"] {
+    background-color: transparent !important;
+    visibility: hidden !important;
+}
+
 /* INPUT BOX HOVER/FOCUS */
 [data-testid="stTextInput"] div[data-baseweb="input"] {
     border: 1px solid #d3d3d3 !important;
@@ -121,8 +137,8 @@ div[data-testid="stButton"] button:hover {
 }
 
 .bottom-actions {
-    margin-top: 1rem;      
-    padding-top: 1rem;      
+    margin-top: 1rem;       
+    padding-top: 1rem;       
     padding-bottom: 2rem;
     border-top: 0.06rem solid #eee;
 }
@@ -167,7 +183,7 @@ if check_password():
 
     if st.session_state.active_project is None:
         # LIBRARY VIEW
-        st.markdown('<div><h1 style="margin:0; font-size: 2.5rem; color:#0000FF;">🗂️ Project Library</h1><p style="color:#18A48C; font-weight: bold; font-size: 1.1rem; margin-bottom: 1.25rem;">Select an existing review or start a new one.</p></div>', unsafe_allow_html=True)
+        st.markdown('<div><h1 style="margin:0; font-size: 2.5rem; color:#0000FF;">🗂️ Project Library</h1><p style="color:#18A48C; font-weight: bold; font-size: 1.1rem; margin-bottom: 1.25rem;">Select an existing review or start a new one</p></div>', unsafe_allow_html=True)
 
         with st.container(border=True):
             c1, c2 = st.columns([4, 1])
@@ -205,7 +221,7 @@ if check_password():
                         with col_name:
                             proj_data = st.session_state.projects[proj_name]
                             p_count = len(proj_data["papers"]) if isinstance(proj_data, dict) else len(proj_data)
-                            st.markdown(f"<div style='display:flex; flex-direction:column; justify-content:center; height:100%;'><h3 style='margin:0; padding:0; font-size:1.1rem; color:#333;'>📍 {proj_name}</h3><span style='font-size:0.85rem; color:#666;'>📚 {p_count} Papers</span></div>", unsafe_allow_html=True)
+                            st.markdown(f"<div style='display:flex; flex-direction:column; justify-content:center; height:100%;'><h3 style='margin:0; padding:0; font-size:1.1rem; color:#0000FF;'>{proj_name}</h3><span style='font-size:0.85rem; color:#666;'>📚 {p_count} Papers</span></div>", unsafe_allow_html=True)
                         with col_edit:
                             st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
                             if st.button("🖊️", key=f"edit_{proj_name}"):
@@ -252,7 +268,6 @@ if check_password():
                     reader = PdfReader(file)
                     text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
                     
-                    # --- THE INTEGRATED SMARTER PHD PROMPT ---
                     prompt = (
                         "Act as a Senior Academic Researcher and PhD Supervisor specializing in Systematic Literature Reviews. "
                         "Your goal is to provide a high-level, critical appraisal of the provided text. Do not simply summarize; "
@@ -286,7 +301,7 @@ if check_password():
                     
                     new_paper = {
                         "#": len(current_proj["papers"]) + 1, 
-                        "Title": ext("TITLE"), 
+                        "Title": ext("TITLE").capitalize(), 
                         "Authors": ext("AUTHORS"), 
                         "Year": ext("YEAR"), 
                         "Reference": ext("REFERENCE"), 
@@ -343,18 +358,20 @@ if check_password():
                 st.dataframe(df, use_container_width=True, hide_index=True)
                 st.download_button(label="📊 Export CSV", data=df.to_csv(index=False).encode('utf-8-sig'), file_name=f"{st.session_state.active_project}.csv", use_container_width=True)
             with t3:
-                with st.spinner("Generating Meta-Synthesis..."):
-                    evidence = "".join([f"Paper {r.get('#')} ({r.get('Year')}): Findings: {r.get('Findings')}\n" for r in papers_data])
-                    synth_p = f"Synthesis of literature. Labels: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE]. Evidence: {evidence}"
-                    raw_s = llm.invoke([HumanMessage(content=synth_p)]).content
-                    clean_s = re.sub(r'\*', '', raw_s)
-                    def gs(l, n=None):
-                        p = rf"\[{l}\]:?\s*(.*?)(?=\s*\[{n}\]|$)" if n else rf"\[{l}\]:?\s*(.*)"
-                        m = re.search(p, clean_s, re.DOTALL | re.IGNORECASE); return m.group(1).strip() if m else "Detail not found."
-                    st.markdown("### 🎯 Executive Overview"); st.write(gs("OVERVIEW", "PATTERNS"))
-                    st.markdown("### 📈 Cross-Study Patterns"); st.write(gs("PATTERNS", "CONTRADICTIONS"))
-                    st.markdown("### ⚖️ Conflicts & Contradictions"); st.write(gs("CONTRADICTIONS", "FUTURE"))
-                    st.markdown("### 🚀 Future Research Directions"); st.write(gs("FUTURE"))
+                # 3. SYNTHESIS CARD WRAPPER
+                with st.container(border=True):
+                    with st.spinner("Generating Meta-Synthesis..."):
+                        evidence = "".join([f"Paper {r.get('#')} ({r.get('Year')}): Findings: {r.get('Findings')}\n" for r in papers_data])
+                        synth_p = f"Synthesis of literature. Labels: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE]. Evidence: {evidence}"
+                        raw_s = llm.invoke([HumanMessage(content=synth_p)]).content
+                        clean_s = re.sub(r'\*', '', raw_s)
+                        def gs(l, n=None):
+                            p = rf"\[{l}\]:?\s*(.*?)(?=\s*\[{n}\]|$)" if n else rf"\[{l}\]:?\s*(.*)"
+                            m = re.search(p, clean_s, re.DOTALL | re.IGNORECASE); return m.group(1).strip() if m else "Detail not found."
+                        st.markdown("### 🎯 Executive Overview"); st.write(gs("OVERVIEW", "PATTERNS"))
+                        st.markdown("### 📈 Cross-Study Patterns"); st.write(gs("PATTERNS", "CONTRADICTIONS"))
+                        st.markdown("### ⚖️ Conflicts & Contradictions"); st.write(gs("CONTRADICTIONS", "FUTURE"))
+                        st.markdown("### 🚀 Future Research Directions"); st.write(gs("FUTURE"))
 
         st.markdown('<div class="bottom-actions">', unsafe_allow_html=True)
         f1, f2, f3 = st.columns([6, 1, 1])
