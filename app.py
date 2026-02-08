@@ -50,9 +50,8 @@ st.markdown("""
 }
 
 /* -------------------------
-   INPUT BOX HOVER/FOCUS FIX
+   INPUT BOX HOVER/FOCUS (GREEN FIX)
    ------------------------- */
-/* Sets the border color for input boxes to green on hover and focus */
 [data-testid="stTextInput"] div[data-baseweb="input"] {
     border: 1px solid #d3d3d3 !important;
 }
@@ -64,7 +63,7 @@ st.markdown("""
 }
 
 /* -------------------------
-   BUTTON HOVER LOGIC
+   GLOBAL HOVER LOGIC
    ------------------------- */
 div[data-testid="stButton"] button:hover {
     background-color: var(--buddy-green) !important;
@@ -87,7 +86,7 @@ div[data-testid="stButton"] button:hover {
 }
 
 /* -------------------------
-   CARD DELETE BUTTON (Bottom of Paper)
+   CARD DELETE BUTTON (Bottom of Card)
    ------------------------- */
 .card-del-container {
     display: flex !important;
@@ -104,6 +103,7 @@ div[data-testid="stButton"] button:hover {
     height: 34px !important;
     padding: 0 15px !important;
     min-width: 140px !important; 
+    width: auto !important;
 }
 
 /* -------------------------
@@ -233,10 +233,7 @@ if check_password():
                             st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
                             if st.button("➡️", key=f"open_{proj_name}"):
                                 st.session_state.active_project = proj_name
-                                if isinstance(st.session_state.projects[proj_name], list):
-                                    st.session_state.projects[proj_name] = {"papers": st.session_state.projects[proj_name], "last_accessed": time.time()}
-                                else:
-                                    st.session_state.projects[proj_name]["last_accessed"] = time.time()
+                                st.session_state.projects[proj_name]["last_accessed"] = time.time()
                                 save_data(st.session_state.projects)
                                 st.rerun()
                             st.markdown('</div>', unsafe_allow_html=True)
@@ -245,16 +242,15 @@ if check_password():
         # PROJECT VIEW
         st.markdown(f'<div class="fixed-header-bg"><div class="fixed-header-text"><h1>{st.session_state.active_project}</h1></div></div>', unsafe_allow_html=True)
         st.markdown('<div class="upload-pull-up">', unsafe_allow_html=True)
+        
         llm = None
         if api_key: llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
+        
         uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
         run_review = st.button("🔬 Analyse paper", use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
         current_proj = st.session_state.projects[st.session_state.active_project]
-        if isinstance(current_proj, list):
-             current_proj = {"papers": current_proj, "last_accessed": time.time()}
-             st.session_state.projects[st.session_state.active_project] = current_proj
 
         if uploaded_files and llm and run_review:
             progress_text = st.empty()
@@ -265,25 +261,36 @@ if check_password():
                 try:
                     reader = PdfReader(file)
                     text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
-                    prompt = f"PhD systematic review. Labels: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. Text: {text[:30000]}"
+                    
+                    # IMPROVED PROMPT FOR BETTER EXTRACTION
+                    prompt = (
+                        f"Act as a PhD Candidate. Conduct a systematic review. "
+                        f"Output ONLY the following labels followed by your analysis: "
+                        f"[TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], "
+                        f"[METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. "
+                        f"No introductory prose. TEXT: {text[:30000]}"
+                    )
+                    
                     res = llm.invoke([HumanMessage(content=prompt)]).content
-                    res = re.sub(r'\*', '', res)
-                    def ext(label, next_l=None):
-                        p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
+                    res = re.sub(r'\*', '', res) # Clean asterisks that break titles
+                    
+                    def ext(label):
+                        # Refined regex to find content between brackets
+                        p = rf"\[{label}\]\s*:?\s*(.*?)(?=\s*\[|$)"
                         m = re.search(p, res, re.DOTALL | re.IGNORECASE)
-                        return m.group(1).strip() if m else "Not found."
+                        return m.group(1).strip() if m else "Detail not found."
                     
                     new_paper = {
                         "#": len(current_proj["papers"]) + 1, 
-                        "Title": ext("TITLE", "AUTHORS"), 
-                        "Authors": ext("AUTHORS", "YEAR"), 
-                        "Year": ext("YEAR", "REFERENCE"), 
-                        "Reference": ext("REFERENCE", "SUMMARY"), 
-                        "Summary": ext("SUMMARY", "BACKGROUND"), 
-                        "Background": ext("BACKGROUND", "METHODOLOGY"), 
-                        "Methodology": ext("METHODOLOGY", "CONTEXT"), 
-                        "Context": ext("CONTEXT", "FINDINGS"), 
-                        "Findings": ext("FINDINGS", "RELIABILITY"), 
+                        "Title": ext("TITLE"), 
+                        "Authors": ext("AUTHORS"), 
+                        "Year": ext("YEAR"), 
+                        "Reference": ext("REFERENCE"), 
+                        "Summary": ext("SUMMARY"), 
+                        "Background": ext("BACKGROUND"), 
+                        "Methodology": ext("METHODOLOGY"), 
+                        "Context": ext("CONTEXT"), 
+                        "Findings": ext("FINDINGS"), 
                         "Reliability": ext("RELIABILITY")
                     }
                     st.session_state.projects[st.session_state.active_project]["papers"].append(new_paper)
@@ -301,21 +308,30 @@ if check_password():
                 for idx, r in enumerate(reversed(papers_data)):
                     real_idx = len(papers_data) - 1 - idx
                     with st.container(border=True):
-                        # Layout Header
-                        col_metric, col_title = st.columns([1, 10])
+                        # Card Header
+                        col_metric, col_title = st.columns([1, 11])
                         with col_metric: st.metric("Ref", r.get('#', real_idx + 1))
                         with col_title: st.subheader(r.get('Title', 'Untitled'))
                         
                         st.markdown(f'<div>🖊️ Authors: {r.get("Authors", "N/A")}<br>🗓️ Year: {r.get("Year", "N/A")}<br>🔗 Full Citation: {r.get("Reference", "N/A")}</div>', unsafe_allow_html=True)
                         st.divider()
                         
-                        sec = [("📝 Summary", r.get("Summary", "")), ("📖 Background", r.get("Background", "")), ("⚙️ Methodology", r.get("Methodology", "")), ("📍 Context", r.get("Context", "")), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]
-                        for k, v in sec: st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
+                        sections = [
+                            ("📝 Summary", r.get("Summary", "")), 
+                            ("📖 Background", r.get("Background", "")), 
+                            ("⚙️ Methodology", r.get("Methodology", "")), 
+                            ("📍 Context", r.get("Context", "")), 
+                            ("💡 Findings", r.get("Findings", "")), 
+                            ("🛡️ Reliability", r.get("Reliability", ""))
+                        ]
+                        for k, v in sections: 
+                            st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
                         
-                        # DELETE BUTTON MOVED TO BOTTOM
+                        # DELETE PAPER BUTTON AT THE BOTTOM
                         st.markdown('<div class="card-del-container">', unsafe_allow_html=True)
                         if st.button("🗑️ Delete Paper", key=f"del_paper_{real_idx}"):
                             st.session_state.projects[st.session_state.active_project]["papers"].pop(real_idx)
+                            # Re-index remaining papers
                             for i, p in enumerate(st.session_state.projects[st.session_state.active_project]["papers"]): p["#"] = i + 1
                             save_data(st.session_state.projects)
                             st.rerun()
@@ -326,7 +342,7 @@ if check_password():
                 st.dataframe(df, use_container_width=True, hide_index=True)
                 st.download_button(label="📊 Export CSV", data=df.to_csv(index=False).encode('utf-8-sig'), file_name=f"{st.session_state.active_project}.csv", use_container_width=True)
             with t3:
-                with st.spinner("Meta-Synthesis..."):
+                with st.spinner("Generating Meta-Synthesis..."):
                     evidence = "".join([f"Paper {r.get('#')} ({r.get('Year')}): Findings: {r.get('Findings')}\n" for r in papers_data])
                     synth_p = f"Synthesis of literature. Labels: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE]. Evidence: {evidence}"
                     raw_s = llm.invoke([HumanMessage(content=synth_p)]).content
@@ -343,7 +359,7 @@ if check_password():
         f1, f2, f3 = st.columns([6, 1, 1])
         with f2:
             if st.button("💾 Save", key="final_save", use_container_width=True):
-                save_data(st.session_state.projects); st.toast("Saved!", icon="✅")
+                save_data(st.session_state.projects); st.toast("Project Saved!", icon="✅")
         with f3:
             if st.button("🏠 Library", key="final_lib", use_container_width=True):
                 save_data(st.session_state.projects); st.session_state.active_project = None; st.rerun()
