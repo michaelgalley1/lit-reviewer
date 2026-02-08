@@ -50,6 +50,16 @@ st.markdown("""
 }
 
 /* -------------------------
+   GLOBAL HOVER LOGIC
+   ------------------------- */
+/* Targets every button in the app to use the buddy-green on hover */
+div[data-testid="stButton"] button:hover {
+    background-color: var(--buddy-green) !important;
+    color: white !important;
+    border-color: var(--buddy-green) !important;
+}
+
+/* -------------------------
    ICON BUTTONS (Library Page)
    ------------------------- */
 .icon-btn div[data-testid="stButton"] button {
@@ -63,31 +73,22 @@ st.markdown("""
     background: transparent !important;
 }
 
-.icon-btn button:hover {
-    background: #f0f2f6 !important;
-    border-radius: 5px !important;
+/* -------------------------
+   CARD DELETE BUTTON (Right Aligned)
+   ------------------------- */
+.card-del-container {
+    display: flex;
+    justify-content: flex-end; /* Force button to the far right */
 }
 
-/* -------------------------
-   CARD DELETE BUTTON (Wider)
-   ------------------------- */
 .card-del-container div[data-testid="stButton"] button {
     color: #ff4b4b !important;
     border: 1px solid #ff4b4b !important;
     background: transparent !important;
-    font-size: 0.8rem !important;
+    font-size: 0.85rem !important;
     height: 32px !important;
-    padding: 0 10px !important;
+    padding: 0 15px !important;
 }
-
-.card-del-container div[data-testid="stButton"] button:hover {
-    background: #ff4b4b !important;
-    color: white !important;
-}
-
-.bin-btn button:hover { color: red !important; background: #ffe6e6 !important; }
-.arrow-btn button:hover { color: var(--buddy-green) !important; background: #e6fffa !important; }
-.edit-btn button:hover { color: #FFA500 !important; background: #fff5e6 !important; }
 
 /* -------------------------
    PROJECT PAGE STYLES
@@ -123,7 +124,7 @@ st.markdown("""
 [data-testid="stTextInput"] div[data-baseweb="input"] { border: 0.06rem solid #d3d3d3 !important; }
 [data-testid="stTextInput"] div[data-baseweb="input"]:focus-within { border: 0.125rem solid var(--buddy-green) !important; }
 
-/* Main Action Buttons */
+/* Default state for standard buttons */
 div[data-testid="stButton"] > button:not([kind="secondary"]) {
     border: 0.06rem solid var(--buddy-green) !important;
     color: var(--buddy-green) !important;
@@ -283,16 +284,18 @@ if check_password():
 
         papers_data = st.session_state.projects[st.session_state.active_project]["papers"]
         if papers_data:
-            t1, t2, t3 = st.tabs(["🖼️ Card Gallery", "📊 Master Table", "🧠 Synthesis"])
+            t1, t2, t3 = st.tabs(["🖼️ Individual Papers", "📊 Master Table", "🧠 Synthesis"])
             with t1:
                 for idx, r in enumerate(reversed(papers_data)):
                     real_idx = len(papers_data) - 1 - idx
                     with st.container(border=True):
-                        # Layout: Metric | Title | Delete Button
-                        cr, ct, cdel = st.columns([1, 10, 2])
+                        # Layout to force delete to the right
+                        cr, ct = st.columns([1, 12])
                         cr.metric("Ref", r['#'])
                         ct.subheader(r['Title'])
                         
+                        # New row just for the right-aligned button
+                        c_spacer, cdel = st.columns([10, 3])
                         with cdel:
                             st.markdown('<div class="card-del-container">', unsafe_allow_html=True)
                             if st.button("🗑️ Delete Paper", key=f"del_paper_{real_idx}"):
@@ -336,4 +339,3 @@ if check_password():
             if st.button("🏠 Library", key="final_lib", use_container_width=True):
                 save_data(st.session_state.projects); st.session_state.active_project = None; st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
-    
