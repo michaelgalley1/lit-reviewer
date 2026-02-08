@@ -89,6 +89,7 @@ api_key = "AIzaSyCs-N57rUlOl1J8LtwT54b6kLgYnAhmuJg"
 if 'projects' not in st.session_state: st.session_state.projects = load_full_library()
 if 'active_project' not in st.session_state: st.session_state.active_project = None 
 if 'renaming_project' not in st.session_state: st.session_state.renaming_project = None
+if 'processed_filenames' not in st.session_state: st.session_state.processed_filenames = set()
 
 if st.session_state.active_project is None:
     # --- LIBRARY VIEW ---
@@ -147,15 +148,21 @@ else:
     if st.button("🔬 Analyse paper", use_container_width=True):
         if uploaded_files:
             progress_container = st.empty()
+            
+            # Identify which papers in the library already exist for this project
+            existing_titles = [p['Title'].lower() for p in st.session_state.projects[st.session_state.active_project]["papers"]]
+            
             for file in uploaded_files:
+                # Check if this specific file has been processed in this session 
+                if file.name in st.session_state.processed_filenames:
+                    continue
+                
                 progress_container.info(f"📖 Analysing: {file.name}...")
                 reader = PdfReader(file)
                 text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
                 
-                # Smarter PhD Prompt Framework
                 prompt = (
                     "Act as a Senior Academic Researcher and PhD Supervisor specializing in Systematic Literature Reviews. "
-                    "Evaluate the logic, methodology, and contribution to the field. "
                     "Carefully analyze the text and extract for the following categories:\n\n"
                     "[TITLE]: The full title.\n[AUTHORS]: All primary authors.\n[YEAR]: Year of publication.\n"
                     "[REFERENCE]: Full Harvard-style citation.\n[SUMMARY]: Concise overview.\n"
@@ -171,15 +178,24 @@ else:
                     m = re.search(rf"\[{label}\]\s*:?\s*(.*?)(?=\s*\[|$)", res, re.DOTALL | re.IGNORECASE)
                     return m.group(1).strip() if m else "Not explicitly stated."
                 
+                extracted_title = ext("TITLE")
+                
+                # Double-check against library titles to avoid same paper with different filename
+                if extracted_title.lower() in existing_titles:
+                    st.warning(f"Skipping '{file.name}': Paper with this title already exists in library.")
+                    st.session_state.processed_filenames.add(file.name)
+                    continue
+
                 new_paper = {
                     "#": len(st.session_state.projects[st.session_state.active_project]["papers"]) + 1,
-                    "Title": ext("TITLE"), "Authors": ext("AUTHORS"), "Year": ext("YEAR"), 
+                    "Title": extracted_title, "Authors": ext("AUTHORS"), "Year": ext("YEAR"), 
                     "Reference": ext("REFERENCE"), "Summary": ext("SUMMARY"), 
                     "Background": ext("BACKGROUND"), "Methodology": ext("METHODOLOGY"), 
                     "Context": ext("CONTEXT"), "Findings": ext("FINDINGS"), 
                     "Reliability": ext("RELIABILITY")
                 }
                 st.session_state.projects[st.session_state.active_project]["papers"].append(new_paper)
+                st.session_state.processed_filenames.add(file.name)
             
             progress_container.empty()
             save_full_library(st.session_state.projects)
@@ -211,4 +227,7 @@ else:
             synth_res = llm.invoke([HumanMessage(content=f"Provide a PhD-level synthesis of these findings: {evidence}")]).content
             st.write(synth_res)
 
-    st.columns([8, 1])[1].button("🏠 Library", on_click=lambda: setattr(st.session_state, 'active_project', None))
+    if st.button("🏠 Library"):
+        st.session_state.processed_filenames = set() # Reset tracker when switching projects
+        st.session_state.active_project = None
+        st.rerun()
