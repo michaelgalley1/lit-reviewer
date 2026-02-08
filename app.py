@@ -61,45 +61,37 @@ st.markdown("""
 :root { --buddy-green: #18A48C; --buddy-blue: #0000FF; }
 [data-testid="block-container"] { padding-top: 0rem !important; }
 
-/* 1. Global Input & Textarea Borders */
+/* Global Input Borders */
 div[data-baseweb="input"], div[data-baseweb="textarea"] {
     border: 1px solid var(--buddy-green) !important;
 }
-div[data-baseweb="input"]:hover, div[data-baseweb="textarea"]:hover,
-div[data-baseweb="input"]:focus-within, div[data-baseweb="textarea"]:focus-within {
-    border: 2px solid var(--buddy-green) !important;
-    outline: none !important;
-}
 
-/* 2. Global Button Hover State */
-button[kind="secondary"], button[kind="primary"] {
-    transition: background-color 0.3s, color 0.3s !important;
-}
+/* Global Button Hover */
 button:hover {
     background-color: var(--buddy-green) !important;
     border-color: var(--buddy-green) !important;
     color: white !important;
 }
 
-/* 3. Tab Styling (Active state) */
+/* Tab Styling - No background hover, specific green underline */
 button[data-baseweb="tab"] {
-    color: #333 !important;
+    background-color: transparent !important;
+}
+button[data-baseweb="tab"]:hover {
+    background-color: transparent !important;
+    color: var(--buddy-green) !important;
 }
 button[data-baseweb="tab"][aria-selected="true"] {
     color: var(--buddy-green) !important;
-    border-bottom-color: var(--buddy-green) !important;
+    border-bottom: 2px solid var(--buddy-green) !important;
 }
 
 .section-title { font-weight: bold; color: var(--buddy-blue); margin-top: 1rem; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 0.06rem solid #eee; }
 .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
-
 .fixed-header-bg { position: fixed; top: 0; left: 0; width: 100%; height: 4.5rem; background: white; border-bottom: 0.125rem solid #f0f2f6; z-index: 1000; padding-left: 3.75rem; display: flex; align-items: center; }
 .fixed-header-text h1 { margin: 0; font-size: 2.2rem; color: var(--buddy-blue); }
 .upload-pull-up { margin-top: -3.0rem !important; }
-
-.synth-area { padding: 10px 0px; margin-top: 0px; }
 .icon-btn div[data-testid="stButton"] button { height: 38px !important; width: 38px !important; padding: 0 !important; border: none !important; background: transparent !important; }
-.icon-btn div[data-testid="stButton"] button:hover { background: #f0f2f6 !important; color: var(--buddy-green) !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -127,7 +119,7 @@ if st.session_state.active_project is None:
     st.markdown('<div><h1 style="color:#0000FF;">🗂️ Project Library</h1><p style="color:#18A48C; font-weight: bold;">Permanent Cloud Storage Active.</p></div>', unsafe_allow_html=True)
     with st.container(border=True):
         c1, c2 = st.columns([4, 1])
-        new_name = c1.text_input("New Project Name", placeholder="e.g. AI Ethics", label_visibility="collapsed")
+        new_name = c1.text_input("New Project Name", placeholder="e.g. AI Ethics", key="new_proj_input")
         if c2.button("➕ Create Project", use_container_width=True):
             if new_name and new_name not in st.session_state.projects:
                 st.session_state.projects[new_name] = {"papers": [], "last_accessed": time.time()}
@@ -182,7 +174,7 @@ else:
                 progress_container.info(f"📖 Analysing: {file.name}...")
                 reader = PdfReader(file)
                 text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
-                prompt = "Act as Senior PhD Supervisor. Deep analysis: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. NO BOLD/BULLETS. TEXT: " + text[:35000]
+                prompt = "Act as Senior PhD Supervisor. Analysis: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. NO BOLD/BULLETS. TEXT: " + text[:35000]
                 res = llm.invoke([HumanMessage(content=prompt)]).content
                 res = re.sub(r'\*', '', res)
                 def ext(label):
@@ -221,26 +213,65 @@ else:
             csv = df.to_csv(index=False).encode('utf-8')
             st.download_button("📥 Export to CSV", data=csv, file_name=f"{st.session_state.active_project}_review.csv", mime='text/csv')
         with t3:
-            st.markdown('<div class="synth-area">', unsafe_allow_html=True)
-            stored_synth = st.session_state.get(f"synth_{st.session_state.active_project}")
-            if stored_synth:
-                st.markdown(stored_synth)
+            # --- SYNTHESIS GRID VIEW ---
+            synth_data = st.session_state.get(f"synth_dict_{st.session_state.active_project}", {})
             
+            if synth_data:
+                # Row 1
+                c1, c2 = st.columns(2)
+                with c1:
+                    with st.container(border=True):
+                        st.markdown("📋 **Overview of papers**")
+                        st.write(synth_data.get("overview", "Click Try Again to generate."))
+                with c2:
+                    with st.container(border=True):
+                        st.markdown("🤝 **Overlaps in their findings**")
+                        st.write(synth_data.get("overlaps", "Click Try Again to generate."))
+                
+                # Row 2
+                c3, c4 = st.columns(2)
+                with c3:
+                    with st.container(border=True):
+                        st.markdown("⚔️ **Contradictions in their findings**")
+                        st.write(synth_data.get("contradictions", "Click Try Again to generate."))
+                with c4:
+                    with st.container(border=True):
+                        st.markdown("🚀 **Suggestions for future research**")
+                        st.write(synth_data.get("future", "Click Try Again to generate."))
+                
+                # Full width summary at bottom
+                with st.container(border=True):
+                    st.markdown("📝 **Summary of synthesis**")
+                    st.write(synth_data.get("summary", "Click Try Again to generate."))
+            else:
+                st.info("No synthesis generated yet.")
+
             st.markdown("<br>", unsafe_allow_html=True)
-            s_col1, s_col2 = st.columns([8, 2])
-            with s_col2:
+            sc1, sc2 = st.columns([8.5, 1.5])
+            with sc2:
                 if st.button("🔄 Try Again", use_container_width=True):
-                    with st.spinner("PhD Buddy is synthesizing themes..."):
+                    with st.spinner("Synthesizing..."):
                         evidence = "".join([f"Paper {r.get('#')}: {r.get('Findings')}\n" for r in papers_data])
-                        synthesis_prompt = (
-                            "Act as a PhD Supervisor. Synthesize findings using emojis for each heading. "
-                            "Structure: 📋 Overview of papers, 🤝 Overlaps, ⚔️ Contradictions, 🚀 Future research, 📝 Summary."
-                            f"\n\nDATA:\n{evidence}"
+                        prompt = (
+                            "Synthesize findings for a PhD review. Extract these exact parts:\n"
+                            "[OVERVIEW]: Overview of papers\n"
+                            "[OVERLAPS]: Overlaps in findings\n"
+                            "[CONTRADICTIONS]: Contradictions in findings\n"
+                            "[FUTURE]: Suggestions for future research\n"
+                            "[SUMMARY]: Summary of synthesis\n"
+                            "DATA: " + evidence
                         )
-                        res = llm.invoke([HumanMessage(content=synthesis_prompt)]).content
-                        st.session_state[f"synth_{st.session_state.active_project}"] = res
+                        res = llm.invoke([HumanMessage(content=prompt)]).content
+                        def get_p(lbl):
+                            m = re.search(rf"\[{lbl}\]\s*:?\s*(.*?)(?=\s*\[|$)", res, re.DOTALL | re.IGNORECASE)
+                            return m.group(1).strip() if m else "Analysis pending."
+                        
+                        st.session_state[f"synth_dict_{st.session_state.active_project}"] = {
+                            "overview": get_p("OVERVIEW"), "overlaps": get_p("OVERLAPS"),
+                            "contradictions": get_p("CONTRADICTIONS"), "future": get_p("FUTURE"),
+                            "summary": get_p("SUMMARY")
+                        }
                         st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
 
     # RIGHT ALIGNED ACTIONS
     st.divider()
