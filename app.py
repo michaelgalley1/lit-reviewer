@@ -49,9 +49,7 @@ st.markdown("""
     padding-bottom: 2rem !important;
 }
 
-/* -------------------------
-   INPUT BOX HOVER/FOCUS (GREEN FIX)
-   ------------------------- */
+/* INPUT BOX HOVER/FOCUS */
 [data-testid="stTextInput"] div[data-baseweb="input"] {
     border: 1px solid #d3d3d3 !important;
 }
@@ -62,18 +60,14 @@ st.markdown("""
     border: 2px solid var(--buddy-green) !important;
 }
 
-/* -------------------------
-   GLOBAL HOVER LOGIC
-   ------------------------- */
+/* BUTTON HOVER LOGIC */
 div[data-testid="stButton"] button:hover {
     background-color: var(--buddy-green) !important;
     color: white !important;
     border-color: var(--buddy-green) !important;
 }
 
-/* -------------------------
-   ICON BUTTONS (Library Page)
-   ------------------------- */
+/* ICON BUTTONS */
 .icon-btn div[data-testid="stButton"] button {
     display: flex !important;
     align-items: center !important;
@@ -85,9 +79,7 @@ div[data-testid="stButton"] button:hover {
     background: transparent !important;
 }
 
-/* -------------------------
-   CARD DELETE BUTTON (Bottom of Card)
-   ------------------------- */
+/* CARD DELETE BUTTON */
 .card-del-container {
     display: flex !important;
     justify-content: flex-end !important;
@@ -106,9 +98,7 @@ div[data-testid="stButton"] button:hover {
     width: auto !important;
 }
 
-/* -------------------------
-   PROJECT PAGE STYLES
-   ------------------------- */
+/* PROJECT PAGE STYLES */
 .fixed-header-bg {
     position: fixed;
     top: 0;
@@ -262,23 +252,37 @@ if check_password():
                     reader = PdfReader(file)
                     text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
                     
-                    # IMPROVED PROMPT FOR BETTER EXTRACTION
+                    # --- THE INTEGRATED SMARTER PHD PROMPT ---
                     prompt = (
-                        f"Act as a PhD Candidate. Conduct a systematic review. "
-                        f"Output ONLY the following labels followed by your analysis: "
-                        f"[TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], "
-                        f"[METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. "
-                        f"No introductory prose. TEXT: {text[:30000]}"
+                        "Act as a Senior Academic Researcher and PhD Supervisor specializing in Systematic Literature Reviews. "
+                        "Your goal is to provide a high-level, critical appraisal of the provided text. Do not simply summarize; "
+                        "evaluate the logic, methodology, and contribution to the field. "
+                        "Carefully analyze the provided paper text and extract information for the following categories:\n\n"
+                        "[TITLE]: The full academic title of the paper.\n"
+                        "[AUTHORS]: List all primary authors.\n"
+                        "[YEAR]: Year of publication.\n"
+                        "[REFERENCE]: Provide a full Harvard-style citation.\n"
+                        "[SUMMARY]: A concise overview (2-3 sentences) of the paper's core objective and outcome.\n"
+                        "[BACKGROUND]: What specific gap in the existing literature are the authors trying to fill? What is the theoretical framework?\n"
+                        "[METHODOLOGY]: Identify the research design (e.g., Experimental, Qualitative, Meta-Analysis), the sample size (N=), and the specific tools/instruments used.\n"
+                        "[CONTEXT]: Where is the study set or the papers from? (e.g. country, population included in analyses).\n"
+                        "[FINDINGS]: What are the primary results? Be specific about statistical significance or core themes discovered. How does this work build upon or contradict previous seminal works in the field?\n"
+                        "[RELIABILITY]: Critically evaluate the study. Are there limitations in the sample? Potential biases? Does the conclusion actually follow from the data provided? Check if the authors mentioned p-values or confidence intervals.\n\n"
+                        "STRICT FORMATTING RULES:\n"
+                        "- Output ONLY the labels above in brackets followed by your analysis.\n"
+                        "- Do not include an introduction, a 'Here is the analysis,' or a conclusion.\n"
+                        "- Do not use bolding or bullet points within the text.\n"
+                        "- If information is missing, write 'Not explicitly stated in text.'\n\n"
+                        f"TEXT TO ANALYZE: {text[:30000]}"
                     )
                     
                     res = llm.invoke([HumanMessage(content=prompt)]).content
-                    res = re.sub(r'\*', '', res) # Clean asterisks that break titles
+                    res = re.sub(r'\*', '', res) 
                     
                     def ext(label):
-                        # Refined regex to find content between brackets
                         p = rf"\[{label}\]\s*:?\s*(.*?)(?=\s*\[|$)"
                         m = re.search(p, res, re.DOTALL | re.IGNORECASE)
-                        return m.group(1).strip() if m else "Detail not found."
+                        return m.group(1).strip() if m else "Not explicitly stated in text."
                     
                     new_paper = {
                         "#": len(current_proj["papers"]) + 1, 
@@ -308,7 +312,6 @@ if check_password():
                 for idx, r in enumerate(reversed(papers_data)):
                     real_idx = len(papers_data) - 1 - idx
                     with st.container(border=True):
-                        # Card Header
                         col_metric, col_title = st.columns([1, 11])
                         with col_metric: st.metric("Ref", r.get('#', real_idx + 1))
                         with col_title: st.subheader(r.get('Title', 'Untitled'))
@@ -327,11 +330,9 @@ if check_password():
                         for k, v in sections: 
                             st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
                         
-                        # DELETE PAPER BUTTON AT THE BOTTOM
                         st.markdown('<div class="card-del-container">', unsafe_allow_html=True)
                         if st.button("🗑️ Delete Paper", key=f"del_paper_{real_idx}"):
                             st.session_state.projects[st.session_state.active_project]["papers"].pop(real_idx)
-                            # Re-index remaining papers
                             for i, p in enumerate(st.session_state.projects[st.session_state.active_project]["papers"]): p["#"] = i + 1
                             save_data(st.session_state.projects)
                             st.rerun()
