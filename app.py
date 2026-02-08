@@ -33,31 +33,29 @@ st.markdown("""
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
     :root { --buddy-green: #18A48C; --buddy-blue: #0000FF; }
     
-    /* Hide default Streamlit elements */
     .stApp a.header-anchor { display: none !important; }
     [data-testid="stDecoration"] { display: none !important; }
 
-    /* Tighten Header Spacing */
+    /* Re-adjusted Header Spacing */
     .sticky-wrapper { 
         position: fixed; top: 0; left: 0; width: 100%; 
         background-color: white; z-index: 1000; 
-        padding: 5px 50px 5px 50px; 
-        border-bottom: 1px solid #f0f2f6;
-        height: 70px; /* Locked height to prevent jumping */
+        padding: 20px 50px 10px 50px; 
+        border-bottom: 2px solid #f0f2f6;
+        height: 100px; 
     }
     
-    /* Main Content Spacing */
-    .main-content { margin-top: -60px; }
-    .block-container { padding-top: 1rem !important; }
+    /* Main Content Spacing - Ensuring it starts below the header */
+    .main-content { margin-top: 100px; }
+    .block-container { padding-top: 0rem !important; }
 
     /* Button Styling */
     div.stButton > button:first-child, div.stDownloadButton > button:first-child {
         width: 100% !important; color: var(--buddy-green) !important; border: 1px solid var(--buddy-green) !important; font-weight: bold !important; background-color: transparent !important;
-        padding: 4px 10px !important;
     }
     div.stButton > button:hover, div.stDownloadButton > button:hover { background-color: var(--buddy-green) !important; color: white !important; }
     
-    /* Rename Button Invisible Style */
+    /* Rename Ghost Button - Pure Text Look */
     .rename-trigger button {
         background: transparent !important;
         border: none !important;
@@ -67,6 +65,8 @@ st.markdown("""
         font-weight: bold !important;
         color: #0000FF !important;
         box-shadow: none !important;
+        display: inline-block !important;
+        width: auto !important;
     }
 
     /* Sidebar Spacing */
@@ -133,7 +133,7 @@ if check_password():
         
         if st.session_state.editing_title:
             edit_cols = st.columns([3, 1])
-            new_name = edit_cols[0].text_input("Rename", value=st.session_state.active_project, label_visibility="collapsed")
+            new_name = edit_cols[0].text_input("Rename Project", value=st.session_state.active_project, label_visibility="collapsed")
             if edit_cols[1].button("✅ Save"):
                 if new_name and new_name != st.session_state.active_project and new_name not in st.session_state.projects:
                     st.session_state.projects[new_name] = st.session_state.projects.pop(st.session_state.active_project)
@@ -142,13 +142,13 @@ if check_password():
                 st.session_state.editing_title = False
                 st.rerun()
         else:
-            # The title itself is now a button that triggers the rename
+            # Styled pure text button
             st.markdown('<div class="rename-trigger">', unsafe_allow_html=True)
-            if st.button(f"📚 {st.session_state.active_project}", help="Click to rename project"):
+            if st.button(f"📚 {st.session_state.active_project}"):
                 st.session_state.editing_title = True
                 st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
-            st.markdown('<p style="color:#18A48C; margin-top:-15px; font-weight: bold; font-size:0.9rem;">PhD-Level Analysis Mode</p>', unsafe_allow_html=True)
+            st.markdown('<p style="color:#18A48C; margin: 0; font-weight: bold; font-size:0.9rem;">PhD-Level Analysis Mode</p>', unsafe_allow_html=True)
 
     with head_col2:
         st.write("##")
@@ -158,7 +158,6 @@ if check_password():
     st.markdown('</div>', unsafe_allow_html=True)
 
     # --- CONTENT ---
-    st.write("##")
     st.markdown('<div class="main-content">', unsafe_allow_html=True)
     
     api_key = st.secrets.get("GEMINI_API_KEY")
