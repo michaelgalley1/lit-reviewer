@@ -5,8 +5,6 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
 from streamlit_gsheets import GSheetsConnection
 import re
-import json
-import os
 import time
 
 # 1. PAGE CONFIGURATION
@@ -17,17 +15,21 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 def load_full_library():
     try:
+        # ttl=0 ensures we don't use old 'cached' data
         df = conn.read(ttl=0)
-        if df is None or df.empty: return {}
+        if df is None or df.empty or 'Project' not in df.columns: 
+            return {}
         
         library = {}
         for _, row in df.iterrows():
             proj = row.get('Project')
-            if not proj: continue
+            if pd.isna(proj) or not proj: continue
+            
             if proj not in library:
                 library[proj] = {"papers": [], "last_accessed": row.get('LastAccessed', 0)}
             
-            if pd.notna(row.get('Title')):
+            # Only add paper data if the Title exists in this row
+            if 'Title' in row and pd.notna(row['Title']):
                 library[proj]["papers"].append({
                     "#": row.get('#'), "Title": row.get('Title'), "Authors": row.get('Authors'),
                     "Year": row.get('Year'), "Reference": row.get('Reference'), "Summary": row.get('Summary'),
@@ -36,12 +38,14 @@ def load_full_library():
                 })
         return library
     except Exception as e:
+        # If there's an error (like missing columns), return empty so app doesn't crash
         return {}
 
 def save_full_library(library):
     flat_data = []
     for proj_name, content in library.items():
         if not content["papers"]:
+            # Ensure we save the project even if it's empty
             flat_data.append({"Project": proj_name, "LastAccessed": content["last_accessed"]})
         else:
             for paper in content["papers"]:
@@ -74,7 +78,7 @@ div[data-testid="stButton"] button:hover { background-color: var(--buddy-green) 
 
 # 4. AUTHENTICATION
 def check_password():
-    correct_password = st.secrets.get("APP_PASSWORD")
+    correct_password = "M1chaelL1tRev1ewTool2026!"
     if "password_correct" not in st.session_state:
         st.markdown('<h1>📚 Literature Review Buddy</h1>', unsafe_allow_html=True)
         pwd = st.text_input("Enter password", type="password")
@@ -82,13 +86,15 @@ def check_password():
             if pwd == correct_password:
                 st.session_state["password_correct"] = True
                 st.rerun()
-            else: st.error("🚫 Access Denied")
+            else:
+                st.error("🚫 Access Denied")
         return False
     return True
 
 # 5. MAIN LOGIC
 if check_password():
-    api_key = st.secrets.get("GEMINI_API_KEY")
+    # Attempt to pull API key from secrets first
+    api_key = st.secrets.get("GEMINI_API_KEY", "AIzaSyCs-N57rUlOl1J8LtwT54b6kLgYnAhmuJg")
 
     if 'projects' not in st.session_state:
         st.session_state.projects = load_full_library()
@@ -97,7 +103,6 @@ if check_password():
         st.session_state.active_project = None 
 
     if st.session_state.active_project is None:
-        # --- LIBRARY VIEW ---
         st.markdown('<div><h1 style="color:#0000FF;">🗂️ Project Library</h1><p style="color:#18A48C; font-weight: bold;">Permanent Cloud Storage Active.</p></div>', unsafe_allow_html=True)
 
         with st.container(border=True):
@@ -130,9 +135,8 @@ if check_password():
                             st.session_state.projects[proj_name]["last_accessed"] = time.time()
                             save_full_library(st.session_state.projects)
                             st.rerun()
-
     else:
-        # --- PROJECT VIEW ---
+        # PROJECT VIEW
         st.markdown(f'<div class="fixed-header-bg"><div class="fixed-header-text"><h1>{st.session_state.active_project}</h1></div></div>', unsafe_allow_html=True)
         st.markdown('<div class="upload-pull-up">', unsafe_allow_html=True)
         
