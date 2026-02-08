@@ -50,21 +50,32 @@ st.markdown("""
 }
 
 /* -------------------------
-   ICON BUTTON CENTERING FIX
+   ADVANCED BUTTON CENTERING
    ------------------------- */
-.icon-btn button {
-    background: transparent !important;
-    border: none !important;
-    padding: 0rem !important;
-    font-size: 1.5rem !important;
-    
-    /* PERFECT CENTERING LOGIC */
+/* This targets the button and its internal Streamlit structure */
+.icon-btn div[data-testid="stButton"] button {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    line-height: 1 !important;
+    padding: 0 !important;
+    margin: 0 !important;
     height: 40px !important;
     width: 40px !important;
+    min-height: 40px !important;
+    min-width: 40px !important;
+    line-height: 1 !important;
+    background: transparent !important;
+    border: none !important;
+}
+
+/* Force the text/emoji container inside the button to have no margins */
+.icon-btn div[data-testid="stButton"] button div p {
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 .icon-btn button:hover {
@@ -110,14 +121,15 @@ st.markdown("""
 [data-testid="stTextInput"] div[data-baseweb="input"] { border: 0.06rem solid #d3d3d3 !important; }
 [data-testid="stTextInput"] div[data-baseweb="input"]:focus-within { border: 0.125rem solid var(--buddy-green) !important; }
 
-div.stButton > button:first-child {
+/* Main Action Buttons */
+div[data-testid="stButton"] > button:not([kind="secondary"]) {
     border: 0.06rem solid var(--buddy-green) !important;
     color: var(--buddy-green) !important;
     background: transparent !important;
     font-weight: bold !important;
     padding: 0.4rem 1rem !important;
 }
-div.stButton > button:hover {
+div[data-testid="stButton"] > button:not([kind="secondary"]):hover {
     background: var(--buddy-green) !important;
     color: white !important;
 }
@@ -256,7 +268,7 @@ if check_password():
                 try:
                     reader = PdfReader(file)
                     text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
-                    prompt = f"PhD systematic review. sophisticated prose. Labels: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. Text: {text[:30000]}"
+                    prompt = f"PhD systematic review. Labels: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. Text: {text[:30000]}"
                     res = llm.invoke([HumanMessage(content=prompt)]).content
                     res = re.sub(r'\*', '', res)
                     def ext(label, next_l=None):
@@ -305,7 +317,7 @@ if check_password():
                 with st.spinner("Meta-Synthesis..."):
                     evidence = ""
                     for r in papers_data: evidence += f"Paper {r['#']} ({r['Year']}): Findings: {r['Findings']}. Methodology: {r['Methodology']}\n\n"
-                    synth_p = f"Synthesis of literature. Labels: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE]. No bolding. Evidence: {evidence}"
+                    synth_p = f"Synthesis of literature. Labels: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE]. Evidence: {evidence}"
                     raw_s = llm.invoke([HumanMessage(content=synth_p)]).content
                     clean_s = re.sub(r'\*', '', raw_s)
                     def gs(l, n=None):
