@@ -56,12 +56,12 @@ st.markdown("""
     .sticky-wrapper {
         position: fixed; top: 0; left: 0; width: 100%;
         background-color: white; z-index: 1000;
-        padding: 15px 50px 10px 50px;
+        padding: 10px 50px 10px 50px; /* Reduced top/bottom padding */
         border-bottom: 2px solid #f0f2f6;
     }
     
-    /* Adjust content to not hide behind header */
-    .main-content { margin-top: 100px; }
+    /* Main Content Spacing - Reduced to close the gap */
+    .main-content { margin-top: 90px; }
     .block-container { padding-top: 0rem !important; }
 
     /* UNIFIED BUTTON STYLING */
@@ -93,17 +93,23 @@ st.markdown("""
         background: #ff4b4b !important;
     }
     
-    /* Right Align Save Button */
-    .save-container {
-        display: flex;
-        justify-content: flex-end;
-        align-items: center;
-        width: 100%;
+    /* Sidebar Spacing - Made much tighter */
+    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
+        gap: 0.05rem !important;
     }
-    .save-container button {
-        width: auto !important;
+
+    /* Save Button Styling (Minimal) */
+    .save-btn-container button {
         border: none !important;
         font-size: 1.5rem !important;
+        padding: 0px !important;
+        background: transparent !important;
+        line-height: 1;
+        min-height: 0px !important;
+    }
+    .save-btn-container button:hover {
+        background: transparent !important;
+        transform: scale(1.1);
     }
 
     .section-title { font-weight: bold; color: #0000FF; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
@@ -188,23 +194,11 @@ if check_password():
                     st.markdown('</div>', unsafe_allow_html=True)
 
     # --- MAIN PAGE HEADER ---
-    # Using columns inside the sticky wrapper to align Title (Left) and Save (Right)
     st.markdown('<div class="sticky-wrapper">', unsafe_allow_html=True)
-    h_col1, h_col2 = st.columns([6, 1])
-    
-    with h_col1:
-        st.markdown(f'''
-            <h1 style="margin:0; font-size: 1.8rem; color:#0000FF;">📚 Literature Review Buddy</h1>
-            <p style="color:#18A48C; margin-bottom:5px; font-weight: bold;">Active Project: {st.session_state.active_project}</p>
-        ''', unsafe_allow_html=True)
-    
-    with h_col2:
-        st.markdown('<div class="save-container">', unsafe_allow_html=True)
-        if st.button("💾", help="Save Progress"):
-            save_data(st.session_state.projects)
-            st.toast("Project saved!", icon="✅")
-        st.markdown('</div>', unsafe_allow_html=True)
-        
+    st.markdown(f'''
+        <h1 style="margin:0; font-size: 1.8rem; color:#0000FF;">📚 Literature Review Buddy</h1>
+        <p style="color:#18A48C; margin-bottom:5px; font-weight: bold;">Active Project: {st.session_state.active_project}</p>
+    ''', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
     # --- MAIN CONTENT ---
@@ -215,7 +209,7 @@ if check_password():
         if api_key:
             llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
 
-        # --- UPLOAD SECTION (Now in Expander) ---
+        # --- UPLOAD SECTION (Expander) ---
         with st.expander("Upload and Analyse Papers", expanded=True):
             uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
             run_review = st.button("🔬 Analyse paper", use_container_width=True)
@@ -276,6 +270,18 @@ if check_password():
         active_data = st.session_state.projects[st.session_state.active_project]
 
         if active_data:
+            st.write("##") # Spacer
+            
+            # --- SAVE BUTTON & TABS ROW ---
+            # Columns to position Save button to the right, just above tabs
+            col_spacer, col_save = st.columns([10, 1])
+            with col_save:
+                st.markdown('<div class="save-btn-container">', unsafe_allow_html=True)
+                if st.button("💾", help="Save Progress"):
+                    save_data(st.session_state.projects)
+                    st.toast("Project saved!", icon="✅")
+                st.markdown('</div>', unsafe_allow_html=True)
+
             t1, t2, t3 = st.tabs(["🖼️ Card Gallery", "📊 Master Table", "🧠 Synthesis"])
             
             with t1:
