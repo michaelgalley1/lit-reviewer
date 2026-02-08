@@ -35,7 +35,7 @@ def save_data(data):
     with open(DB_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
-# 3. STYLING (CSS)
+# 3. STYLING (CSS using REM)
 st.markdown("""
 <style>
 [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
@@ -55,7 +55,7 @@ st.markdown("""
 .icon-btn button {
     background: transparent !important;
     border: none !important;
-    padding: 0px !important;
+    padding: 0rem !important;
     font-size: 1.5rem !important;
     line-height: 1 !important;
     display: flex;
@@ -65,7 +65,7 @@ st.markdown("""
 }
 .icon-btn button:hover {
     background: #f0f2f6 !important;
-    border-radius: 5px !important;
+    border-radius: 0.3rem !important;
 }
 .bin-btn button:hover { color: red !important; background: #ffe6e6 !important; }
 .arrow-btn button:hover { color: var(--buddy-green) !important; background: #e6fffa !important; }
@@ -79,42 +79,43 @@ st.markdown("""
     top: 0;
     left: 0;
     width: 100%;
-    height: 60px; /* Reduced height */
+    height: 4.5rem; 
     background: white;
-    border-bottom: 2px solid #f0f2f6;
+    border-bottom: 0.125rem solid #f0f2f6;
     z-index: 1000;
-    padding-left: 60px;
+    padding-left: 3.75rem;
     display: flex;
     align-items: center;
 }
 
-.fixed-header-text h1 { margin: 0; font-size: 1.8rem; color: #0000FF; line-height: 1.1; }
+.fixed-header-text h1 { margin: 0; font-size: 2rem; color: #0000FF; line-height: 1.1; }
 
-/* Spacer to push content below fixed header - Reduced */
-.header-spacer { height: 10px; width: 100%; }
+/* Spacer to push content below fixed header */
+.header-spacer { height: 1.5rem; width: 100%; }
 
 .bottom-actions {
-    margin-top: 10px;      
-    padding-top: 10px;     
-    padding-bottom: 20px;
-    border-top: 1px solid #eee;
+    margin-top: 1rem;      
+    padding-top: 1rem;     
+    padding-bottom: 2rem;
+    border-top: 0.06rem solid #eee;
 }
 
-[data-testid="stTextInput"] div[data-baseweb="input"] { border: 1px solid #d3d3d3 !important; }
-[data-testid="stTextInput"] div[data-baseweb="input"]:focus-within { border: 2px solid var(--buddy-green) !important; }
+[data-testid="stTextInput"] div[data-baseweb="input"] { border: 0.06rem solid #d3d3d3 !important; }
+[data-testid="stTextInput"] div[data-baseweb="input"]:focus-within { border: 0.125rem solid var(--buddy-green) !important; }
 
 div.stButton > button:first-child {
-    border: 1px solid var(--buddy-green) !important;
+    border: 0.06rem solid var(--buddy-green) !important;
     color: var(--buddy-green) !important;
     background: transparent !important;
     font-weight: bold !important;
+    padding: 0.4rem 1rem !important;
 }
 div.stButton > button:hover {
     background: var(--buddy-green) !important;
     color: white !important;
 }
 
-.section-title { font-weight: bold; color: #0000FF; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
+.section-title { font-weight: bold; color: #0000FF; margin-top: 1rem; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 0.06rem solid #eee; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -152,7 +153,7 @@ if check_password():
         st.markdown("""
         <div>
             <h1 style="margin:0; font-size: 2.5rem; color:#0000FF;">🗂️ Project Library</h1>
-            <p style="color:#18A48C; font-weight: bold; font-size: 1.1rem; margin-bottom: 20px;">Select an existing review or start a new one.</p>
+            <p style="color:#18A48C; font-weight: bold; font-size: 1.1rem; margin-bottom: 1.25rem;">Select an existing review or start a new one.</p>
         </div>
         """, unsafe_allow_html=True)
 
