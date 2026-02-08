@@ -6,6 +6,8 @@ from langchain_core.messages import HumanMessage
 import re
 import json
 import os
+import time
+from datetime import datetime
 
 # 1. PAGE CONFIGURATION
 st.set_page_config(page_title="Literature Review Buddy", page_icon="📚", layout="wide")
@@ -17,7 +19,16 @@ def load_data():
     if os.path.exists(DB_FILE):
         try:
             with open(DB_FILE, "r") as f:
-                return json.load(f)
+                data = json.load(f)
+                # Migration: If old format (list of papers), convert to dict with metadata
+                # New format: "ProjectName": {"papers": [], "last_accessed": float}
+                new_data = {}
+                for k, v in data.items():
+                    if isinstance(v, list):
+                        new_data[k] = {"papers": v, "last_accessed": 0}
+                    else:
+                        new_data[k] = v
+                return new_data
         except:
             return {}
     return {}
@@ -89,7 +100,7 @@ st.markdown("""
     line-height: 1.1; 
 }
 
-/* Spacer to push content below fixed header - Reduced height */
+/* Spacer to push content below fixed header */
 .header-spacer {
     height: 80px; 
     width: 100%;
@@ -97,8 +108,8 @@ st.markdown("""
 
 /* BOTTOM ACTION BAR - Tightened Spacing */
 .bottom-actions {
-    margin-top: 10px;      /* Halved from 30px */
-    padding-top: 10px;     /* Halved from 20px */
+    margin-top: 10px;      
+    padding-top: 10px;     
     padding-bottom: 20px;
     border-top: 1px solid #eee;
 }
@@ -164,27 +175,38 @@ if check_password():
             new_name = c1.text_input("New Project Name", placeholder="e.g. AI Ethics 2026", label_visibility="collapsed")
             if c2.button("➕ Create Project", use_container_width=True):
                 if new_name and new_name not in st.session_state.projects:
-                    st.session_state.projects[new_name] = []
+                    # Create with timestamp
+                    st.session_state.projects[new_name] = {"papers": [], "last_accessed": time.time()}
                     save_data(st.session_state.projects)
                     st.session_state.active_project = new_name
                     st.rerun()
                 elif new_name in st.session_state.projects:
                     st.error("Project already exists.")
 
-        st.write("###") 
-
+        # REMOVED SPACER HERE to pull list up
+        
         projects = list(st.session_state.projects.keys())
         
         if not projects:
             st.info("No projects yet.")
         else:
+            # SORT PROJECTS BY LAST ACCESSED (Descending)
+            # We use .get('last_accessed', 0) to handle legacy projects without timestamps
+            sorted_projects = sorted(projects, key=lambda x: st.session_state.projects[x].get("last_accessed", 0), reverse=True)
+
             st.markdown("### Your Projects")
-            for proj_name in projects:
+            for proj_name in sorted_projects:
                 with st.container(border=True):
                     col_name, col_spacer, col_del, col_open = st.columns([6, 2, 0.5, 0.5])
                     
                     with col_name:
-                        paper_count = len(st.session_state.projects[proj_name])
+                        # Handle both old list format and new dict format safely
+                        proj_data = st.session_state.projects[proj_name]
+                        if isinstance(proj_data, list):
+                            paper_count = len(proj_data)
+                        else:
+                            paper_count = len(proj_data.get("papers", []))
+                            
                         st.markdown(f"<div style='display:flex; flex-direction:column; justify-content:center; height:100%;'>"
                                     f"<h3 style='margin:0; padding:0; font-size:1.1rem; color:#333;'>📍 {proj_name}</h3>"
                                     f"<span style='font-size:0.85rem; color:#666;'>📚 {paper_count} Papers</span></div>", unsafe_allow_html=True)
@@ -201,6 +223,15 @@ if check_password():
                         st.markdown('<div class="icon-btn arrow-btn">', unsafe_allow_html=True)
                         if st.button("➡️", key=f"open_{proj_name}", help=f"Open {proj_name}"):
                             st.session_state.active_project = proj_name
+                            
+                            # Update timestamp on open
+                            if isinstance(st.session_state.projects[proj_name], list):
+                                # Convert old format on fly
+                                st.session_state.projects[proj_name] = {"papers": st.session_state.projects[proj_name], "last_accessed": time.time()}
+                            else:
+                                st.session_state.projects[proj_name]["last_accessed"] = time.time()
+                            
+                            save_data(st.session_state.projects)
                             st.rerun()
                         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -223,9 +254,14 @@ if check_password():
         if api_key:
             llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
 
-        # REMOVED SPACER HERE to pull upload box up
         uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
         run_review = st.button("🔬 Analyse paper", use_container_width=True)
+
+        # Ensure current project data is in correct format (dict)
+        current_proj = st.session_state.projects[st.session_state.active_project]
+        if isinstance(current_proj, list):
+             current_proj = {"papers": current_proj, "last_accessed": time.time()}
+             st.session_state.projects[st.session_state.active_project] = current_proj
 
         if uploaded_files and llm and run_review:
             progress_text = st.empty()
@@ -259,8 +295,8 @@ if check_password():
                         m = re.search(p, res, re.DOTALL | re.IGNORECASE)
                         return m.group(1).strip() if m else "Not found."
 
-                    st.session_state.projects[st.session_state.active_project].append({
-                        "#": len(st.session_state.projects[st.session_state.active_project]) + 1,
+                    new_paper = {
+                        "#": len(current_proj["papers"]) + 1,
                         "Title": ext("TITLE", "AUTHORS"),
                         "Authors": ext("AUTHORS", "YEAR"),
                         "Year": ext("YEAR", "REFERENCE"),
@@ -271,7 +307,11 @@ if check_password():
                         "Context": ext("CONTEXT", "FINDINGS"),
                         "Findings": ext("FINDINGS", "RELIABILITY"),
                         "Reliability": ext("RELIABILITY")
-                    })
+                    }
+                    
+                    st.session_state.projects[st.session_state.active_project]["papers"].append(new_paper)
+                    st.session_state.projects[st.session_state.active_project]["last_accessed"] = time.time() # Update time
+                    
                     st.session_state.session_uploads.add(file.name)
                     save_data(st.session_state.projects)
                     
@@ -279,12 +319,12 @@ if check_password():
             progress_text.empty()
             st.rerun()
 
-        current_data = st.session_state.projects[st.session_state.active_project]
+        papers_data = st.session_state.projects[st.session_state.active_project]["papers"]
 
-        if current_data:
+        if papers_data:
             t1, t2, t3 = st.tabs(["🖼️ Card Gallery", "📊 Master Table", "🧠 Synthesis"])
             with t1:
-                for r in reversed(current_data):
+                for r in reversed(papers_data):
                     with st.container(border=True):
                         cr, ct = st.columns([1, 12]); cr.metric("Ref", r['#']); ct.subheader(r['Title'])
                         st.markdown(f'''
@@ -299,7 +339,7 @@ if check_password():
                         for k, v in sec:
                             st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
             with t2:
-                df = pd.DataFrame(current_data)
+                df = pd.DataFrame(papers_data)
                 st.dataframe(df, use_container_width=True, hide_index=True)
                 csv = df.to_csv(index=False).encode('utf-8-sig')
                 st.download_button(
@@ -310,10 +350,10 @@ if check_password():
                     use_container_width=True
                 )
             with t3:
-                if len(current_data) > 0:
+                if len(papers_data) > 0:
                     with st.spinner("Performing meta-synthesis..."):
                         evidence_base = ""
-                        for r in current_data:
+                        for r in papers_data:
                             evidence_base += f"Paper {r['#']} ({r['Year']}): Findings: {r['Findings']}. Methodology: {r['Methodology']}\n\n"
 
                         synth_prompt = f"Meta-Synthesis: Analyze theoretical contributions and trends. Use [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS]. Academic prose, no bolding.\n\nEvidence Base:\n{evidence_base}"
@@ -335,7 +375,6 @@ if check_password():
                             st.markdown("### 🚀 Future Research Directions"); st.write(get_synth("FUTURE_DIRECTIONS"))
 
         # 3. BOTTOM BUTTONS (Footer Area)
-        # REMOVED SPACER HERE to pull footer up
         st.markdown('<div class="bottom-actions">', unsafe_allow_html=True)
         
         f1, f2, f3 = st.columns([6, 1, 1])
