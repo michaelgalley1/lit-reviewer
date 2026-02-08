@@ -73,13 +73,20 @@ div[data-testid="stButton"] button:hover {
 }
 
 /* -------------------------
-   BOTTOM-RIGHT DELETE BUTTON
+   PINNED BOTTOM-RIGHT DELETE BUTTON
    ------------------------- */
+/* Wrap the Streamlit button in a div that forces right alignment */
 .card-del-footer {
     display: flex !important;
     justify-content: flex-end !important;
     width: 100% !important;
-    margin-top: 1rem;
+    margin-top: 1.5rem;
+}
+
+/* Ensure the Streamlit button container itself doesn't try to center or left-align */
+.card-del-footer div[data-testid="stButton"] {
+    display: flex;
+    justify-content: flex-end;
 }
 
 .card-del-footer div[data-testid="stButton"] button {
@@ -289,7 +296,7 @@ if check_password():
                         sec = [("📝 Summary", r["Summary"]), ("📖 Background", r["Background"]), ("⚙️ Methodology", r["Methodology"]), ("📍 Context", r["Context"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]
                         for k, v in sec: st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
                         
-                        # BUTTON ROW AT THE BOTTOM
+                        # RIGHT-ALIGNED BUTTON AT THE BOTTOM
                         st.markdown('<div class="card-del-footer">', unsafe_allow_html=True)
                         if st.button("🗑️ Delete Paper", key=f"del_paper_{real_idx}"):
                             st.session_state.projects[st.session_state.active_project]["papers"].pop(real_idx)
