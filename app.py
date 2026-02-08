@@ -20,7 +20,6 @@ def load_data():
         try:
             with open(DB_FILE, "r") as f:
                 data = json.load(f)
-                # Migration logic for file data
                 new_data = {}
                 for k, v in data.items():
                     if isinstance(v, list):
@@ -45,7 +44,6 @@ st.markdown("""
     --buddy-blue: #0000FF;
 }
 
-/* GLOBAL RESET */
 [data-testid="block-container"] {
     padding-top: 1rem !important;
     padding-bottom: 2rem !important;
@@ -71,12 +69,11 @@ st.markdown("""
 }
 .bin-btn button:hover { color: red !important; background: #ffe6e6 !important; }
 .arrow-btn button:hover { color: var(--buddy-green) !important; background: #e6fffa !important; }
+.edit-btn button:hover { color: #FFA500 !important; background: #fff5e6 !important; }
 
 /* -------------------------
    PROJECT PAGE STYLES
    ------------------------- */
-
-/* FIXED HEADER (Title Only) */
 .fixed-header-bg {
     position: fixed;
     top: 0;
@@ -86,26 +83,15 @@ st.markdown("""
     background: white;
     border-bottom: 2px solid #f0f2f6;
     z-index: 1000;
-    padding-left: 60px; /* Match Streamlit margin */
+    padding-left: 60px;
     display: flex;
     align-items: center;
 }
 
-/* Main Project Title */
-.fixed-header-text h1 { 
-    margin: 0; 
-    font-size: 2.2rem; 
-    color: #0000FF; 
-    line-height: 1.1; 
-}
+.fixed-header-text h1 { margin: 0; font-size: 2.2rem; color: #0000FF; line-height: 1.1; }
 
-/* Spacer to push content below fixed header */
-.header-spacer {
-    height: 80px; 
-    width: 100%;
-}
+.header-spacer { height: 80px; width: 100%; }
 
-/* BOTTOM ACTION BAR - Tightened Spacing */
 .bottom-actions {
     margin-top: 10px;      
     padding-top: 10px;     
@@ -113,11 +99,9 @@ st.markdown("""
     border-top: 1px solid #eee;
 }
 
-/* General Input Styling */
 [data-testid="stTextInput"] div[data-baseweb="input"] { border: 1px solid #d3d3d3 !important; }
 [data-testid="stTextInput"] div[data-baseweb="input"]:focus-within { border: 2px solid var(--buddy-green) !important; }
 
-/* Button General */
 div.stButton > button:first-child {
     border: 1px solid var(--buddy-green) !important;
     color: var(--buddy-green) !important;
@@ -156,6 +140,8 @@ if check_password():
         st.session_state.projects = load_data()
     if 'active_project' not in st.session_state:
         st.session_state.active_project = None 
+    if 'renaming_project' not in st.session_state:
+        st.session_state.renaming_project = None
 
     # ==========================================
     # VIEW 1: HOME PAGE (Project Library)
@@ -174,7 +160,6 @@ if check_password():
             new_name = c1.text_input("New Project Name", placeholder="e.g. AI Ethics 2026", label_visibility="collapsed")
             if c2.button("➕ Create Project", use_container_width=True):
                 if new_name and new_name not in st.session_state.projects:
-                    # Create with timestamp
                     st.session_state.projects[new_name] = {"papers": [], "last_accessed": time.time()}
                     save_data(st.session_state.projects)
                     st.session_state.active_project = new_name
@@ -182,67 +167,82 @@ if check_password():
                 elif new_name in st.session_state.projects:
                     st.error("Project already exists.")
 
-        # NO SPACER HERE - TIGHT LAYOUT
-        
         projects = list(st.session_state.projects.keys())
         
         if not projects:
             st.info("No projects yet.")
         else:
-            # SAFETY SORT: Handles both old list format and new dict format
             def get_timestamp(proj_key):
                 data = st.session_state.projects[proj_key]
-                if isinstance(data, dict):
-                    return data.get("last_accessed", 0)
-                return 0 # Old format gets 0 timestamp (bottom of list)
+                return data.get("last_accessed", 0) if isinstance(data, dict) else 0
 
             sorted_projects = sorted(projects, key=get_timestamp, reverse=True)
 
             st.markdown("### Your Projects")
             for proj_name in sorted_projects:
                 with st.container(border=True):
-                    col_name, col_spacer, col_del, col_open = st.columns([6, 2, 0.5, 0.5])
-                    
-                    with col_name:
-                        # Handle both old list format and new dict format safely
-                        proj_data = st.session_state.projects[proj_name]
-                        if isinstance(proj_data, list):
-                            paper_count = len(proj_data)
-                        else:
-                            paper_count = len(proj_data.get("papers", []))
-                            
-                        st.markdown(f"<div style='display:flex; flex-direction:column; justify-content:center; height:100%;'>"
-                                    f"<h3 style='margin:0; padding:0; font-size:1.1rem; color:#333;'>📍 {proj_name}</h3>"
-                                    f"<span style='font-size:0.85rem; color:#666;'>📚 {paper_count} Papers</span></div>", unsafe_allow_html=True)
-                    
-                    with col_del:
-                        st.markdown('<div class="icon-btn bin-btn">', unsafe_allow_html=True)
-                        if st.button("🗑️", key=f"del_{proj_name}", help=f"Delete {proj_name}"):
-                            del st.session_state.projects[proj_name]
-                            save_data(st.session_state.projects)
-                            st.rerun()
-                        st.markdown('</div>', unsafe_allow_html=True)
-                    
-                    with col_open:
-                        st.markdown('<div class="icon-btn arrow-btn">', unsafe_allow_html=True)
-                        if st.button("➡️", key=f"open_{proj_name}", help=f"Open {proj_name}"):
-                            st.session_state.active_project = proj_name
-                            
-                            # Upgrade old data format on fly if needed
-                            if isinstance(st.session_state.projects[proj_name], list):
-                                st.session_state.projects[proj_name] = {"papers": st.session_state.projects[proj_name], "last_accessed": time.time()}
-                            else:
-                                st.session_state.projects[proj_name]["last_accessed"] = time.time()
-                            
-                            save_data(st.session_state.projects)
-                            st.rerun()
-                        st.markdown('</div>', unsafe_allow_html=True)
+                    if st.session_state.renaming_project == proj_name:
+                        r_col1, r_col2, r_col3 = st.columns([6, 1, 1])
+                        with r_col1:
+                            new_name_val = st.text_input("Rename", value=proj_name, label_visibility="collapsed", key=f"input_{proj_name}")
+                        with r_col2:
+                            if st.button("✅", key=f"save_rename_{proj_name}", use_container_width=True):
+                                if new_name_val and new_name_val != proj_name:
+                                    if new_name_val in st.session_state.projects:
+                                        st.error("Exists!")
+                                    else:
+                                        st.session_state.projects[new_name_val] = st.session_state.projects.pop(proj_name)
+                                        save_data(st.session_state.projects)
+                                        st.session_state.renaming_project = None
+                                        st.rerun()
+                                else:
+                                    st.session_state.renaming_project = None
+                                    st.rerun()
+                        with r_col3:
+                            if st.button("❌", key=f"cancel_rename_{proj_name}", use_container_width=True):
+                                st.session_state.renaming_project = None
+                                st.rerun()
+                    else:
+                        col_name, col_spacer, col_edit, col_del, col_open = st.columns([6, 1.5, 0.5, 0.5, 0.5])
+                        
+                        with col_name:
+                            proj_data = st.session_state.projects[proj_name]
+                            paper_count = len(proj_data["papers"]) if isinstance(proj_data, dict) else len(proj_data)
+                            st.markdown(f"<div style='display:flex; flex-direction:column; justify-content:center; height:100%;'>"
+                                        f"<h3 style='margin:0; padding:0; font-size:1.1rem; color:#333;'>📍 {proj_name}</h3>"
+                                        f"<span style='font-size:0.85rem; color:#666;'>📚 {paper_count} Papers</span></div>", unsafe_allow_html=True)
+                        
+                        with col_edit:
+                            st.markdown('<div class="icon-btn edit-btn">', unsafe_allow_html=True)
+                            if st.button("🖊️", key=f"edit_{proj_name}", help="Rename"):
+                                st.session_state.renaming_project = proj_name
+                                st.rerun()
+                            st.markdown('</div>', unsafe_allow_html=True)
+
+                        with col_del:
+                            st.markdown('<div class="icon-btn bin-btn">', unsafe_allow_html=True)
+                            if st.button("🗑️", key=f"del_{proj_name}", help="Delete"):
+                                del st.session_state.projects[proj_name]
+                                save_data(st.session_state.projects)
+                                st.rerun()
+                            st.markdown('</div>', unsafe_allow_html=True)
+                        
+                        with col_open:
+                            st.markdown('<div class="icon-btn arrow-btn">', unsafe_allow_html=True)
+                            if st.button("➡️", key=f"open_{proj_name}", help="Open"):
+                                st.session_state.active_project = proj_name
+                                if isinstance(st.session_state.projects[proj_name], list):
+                                    st.session_state.projects[proj_name] = {"papers": st.session_state.projects[proj_name], "last_accessed": time.time()}
+                                else:
+                                    st.session_state.projects[proj_name]["last_accessed"] = time.time()
+                                save_data(st.session_state.projects)
+                                st.rerun()
+                            st.markdown('</div>', unsafe_allow_html=True)
 
     # ==========================================
-    # VIEW 2: ANALYSIS DASHBOARD (Individual Project)
+    # VIEW 2: ANALYSIS DASHBOARD
     # ==========================================
     else:
-        # 1. FIXED HEADER
         st.markdown(f'''
         <div class="fixed-header-bg">
             <div class="fixed-header-text">
@@ -252,7 +252,6 @@ if check_password():
         <div class="header-spacer"></div>
         ''', unsafe_allow_html=True)
 
-        # 2. MAIN CONTENT
         llm = None
         if api_key:
             llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
@@ -260,7 +259,6 @@ if check_password():
         uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
         run_review = st.button("🔬 Analyse paper", use_container_width=True)
 
-        # Ensure current project data is in correct format (dict)
         current_proj = st.session_state.projects[st.session_state.active_project]
         if isinstance(current_proj, list):
              current_proj = {"papers": current_proj, "last_accessed": time.time()}
@@ -272,7 +270,6 @@ if check_password():
 
             for i, file in enumerate(uploaded_files):
                 if file.name in st.session_state.session_uploads: continue
-                
                 progress_text.text(f"📖 Critically reviewing: {file.name}...")
                 try:
                     reader = PdfReader(file)
@@ -282,12 +279,7 @@ if check_password():
                     Avoid excessive use of commas; provide fluid, sophisticated academic prose.
                     Structure your response using ONLY these labels:
                     [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
-
-                    Requirements:
-                    - [METHODOLOGY]: Design critique, sampling, and statistical validity.
-                    - [RELIABILITY]: Discuss internal/external validity and potential biases.
-                    - No bolding (**). No lists. Use sophisticated academic prose.
-
+                    Requirements: No bolding (**). No lists. Sophisticated prose.
                     FULL TEXT: {text[:30000]}
                     """
                     res = llm.invoke([HumanMessage(content=prompt)]).content
@@ -300,25 +292,16 @@ if check_password():
 
                     new_paper = {
                         "#": len(current_proj["papers"]) + 1,
-                        "Title": ext("TITLE", "AUTHORS"),
-                        "Authors": ext("AUTHORS", "YEAR"),
-                        "Year": ext("YEAR", "REFERENCE"),
-                        "Reference": ext("REFERENCE", "SUMMARY"),
-                        "Summary": ext("SUMMARY", "BACKGROUND"),
-                        "Background": ext("BACKGROUND", "METHODOLOGY"),
-                        "Methodology": ext("METHODOLOGY", "CONTEXT"),
-                        "Context": ext("CONTEXT", "FINDINGS"),
-                        "Findings": ext("FINDINGS", "RELIABILITY"),
+                        "Title": ext("TITLE", "AUTHORS"), "Authors": ext("AUTHORS", "YEAR"), "Year": ext("YEAR", "REFERENCE"),
+                        "Reference": ext("REFERENCE", "SUMMARY"), "Summary": ext("SUMMARY", "BACKGROUND"), "Background": ext("BACKGROUND", "METHODOLOGY"),
+                        "Methodology": ext("METHODOLOGY", "CONTEXT"), "Context": ext("CONTEXT", "FINDINGS"), "Findings": ext("FINDINGS", "RELIABILITY"),
                         "Reliability": ext("RELIABILITY")
                     }
-                    
                     st.session_state.projects[st.session_state.active_project]["papers"].append(new_paper)
                     st.session_state.projects[st.session_state.active_project]["last_accessed"] = time.time()
-                    
                     st.session_state.session_uploads.add(file.name)
                     save_data(st.session_state.projects)
-                    
-                except Exception as e: st.error(f"Error on {file.name}: {e}")
+                except Exception as e: st.error(f"Error: {e}")
             progress_text.empty()
             st.rerun()
 
@@ -330,13 +313,11 @@ if check_password():
                 for r in reversed(papers_data):
                     with st.container(border=True):
                         cr, ct = st.columns([1, 12]); cr.metric("Ref", r['#']); ct.subheader(r['Title'])
-                        st.markdown(f'''
-                            <div class="metadata-block">
+                        st.markdown(f'''<div class="metadata-block">
                                 <span class="metadata-item">🖊️ <b>Authors:</b> {r["Authors"]}</span>
                                 <span class="metadata-item">🗓️ <b>Year:</b> {r["Year"]}</span>
                                 <span class="metadata-item">🔗 <b>Full Citation:</b> {r["Reference"]}</span>
-                            </div>
-                        ''', unsafe_allow_html=True)
+                                </div>''', unsafe_allow_html=True)
                         st.divider()
                         sec = [("📝 Summary", r["Summary"]), ("📖 Background", r["Background"]), ("⚙️ Methodology", r["Methodology"]), ("📍 Context", r["Context"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]
                         for k, v in sec:
@@ -345,50 +326,29 @@ if check_password():
                 df = pd.DataFrame(papers_data)
                 st.dataframe(df, use_container_width=True, hide_index=True)
                 csv = df.to_csv(index=False).encode('utf-8-sig')
-                st.download_button(
-                    label="📊 Export as CSV file",
-                    data=csv,
-                    file_name=f"{st.session_state.active_project}_review.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
+                st.download_button(label="📊 Export as CSV file", data=csv, file_name=f"{st.session_state.active_project}_review.csv", mime="text/csv", use_container_width=True)
             with t3:
                 if len(papers_data) > 0:
-                    with st.spinner("Performing meta-synthesis..."):
+                    with st.spinner("Meta-Synthesis..."):
                         evidence_base = ""
-                        for r in papers_data:
-                            evidence_base += f"Paper {r['#']} ({r['Year']}): Findings: {r['Findings']}. Methodology: {r['Methodology']}\n\n"
-
-                        synth_prompt = f"Meta-Synthesis: Analyze theoretical contributions and trends. Use [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS]. Academic prose, no bolding.\n\nEvidence Base:\n{evidence_base}"
+                        for r in papers_data: evidence_base += f"Paper {r['#']} ({r['Year']}): Findings: {r['Findings']}. Methodology: {r['Methodology']}\n\n"
+                        synth_prompt = f"Meta-Synthesis: Use [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS]. No bolding.\n\nEvidence Base:\n{evidence_base}"
                         raw_synth = llm.invoke([HumanMessage(content=synth_prompt)]).content
                         clean_synth = re.sub(r'\*', '', raw_synth)
-
                         def get_synth(label, next_l=None):
                             p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
-                            m = re.search(p, clean_synth, re.DOTALL | re.IGNORECASE)
-                            return m.group(1).strip() if m else "Detail not found."
+                            m = re.search(p, clean_synth, re.DOTALL | re.IGNORECASE); return m.group(1).strip() if m else "Not found."
+                        st.markdown("### 🎯 Executive Overview"); st.write(get_synth("OVERVIEW", "PATTERNS"))
+                        st.markdown("### 📈 Cross-Study Patterns"); st.write(get_synth("PATTERNS", "CONTRADICTIONS"))
+                        st.markdown("### ⚖️ Conflicts & Contradictions"); st.write(get_synth("CONTRADICTIONS", "FUTURE_DIRECTIONS"))
+                        st.markdown("### 🚀 Future Research Directions"); st.write(get_synth("FUTURE_DIRECTIONS"))
 
-                        with st.container(border=True):
-                            st.markdown("### 🎯 Executive Overview"); st.write(get_synth("OVERVIEW", "PATTERNS"))
-                        with st.container(border=True):
-                            st.markdown("### 📈 Cross-Study Patterns"); st.write(get_synth("PATTERNS", "CONTRADICTIONS"))
-                        with st.container(border=True):
-                            st.markdown("### ⚖️ Conflicts & Contradictions"); st.write(get_synth("CONTRADICTIONS", "FUTURE_DIRECTIONS"))
-                        with st.container(border=True):
-                            st.markdown("### 🚀 Future Research Directions"); st.write(get_synth("FUTURE_DIRECTIONS"))
-
-        # 3. BOTTOM BUTTONS (Footer Area)
         st.markdown('<div class="bottom-actions">', unsafe_allow_html=True)
-        
         f1, f2, f3 = st.columns([6, 1, 1])
         with f2:
             if st.button("💾 Save Progress", use_container_width=True):
-                save_data(st.session_state.projects)
-                st.toast("Saved!", icon="✅")
+                save_data(st.session_state.projects); st.toast("Saved!", icon="✅")
         with f3:
             if st.button("🏠 Library", use_container_width=True):
-                save_data(st.session_state.projects)
-                st.session_state.active_project = None
-                st.rerun()
-        
+                save_data(st.session_state.projects); st.session_state.active_project = None; st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
