@@ -79,12 +79,13 @@ color: white !important;
 .metadata-block { margin-bottom: 10px; }
 .metadata-item { color: #444; font-size: 0.95rem; margin-bottom: 4px; display: block; }
 
-/* Sticky Header for Project Page */
+/* Sticky Header Background */
 .sticky-wrapper {
     position: fixed; top: 0; left: 0; width: 100%;
     background-color: white; z-index: 1000;
-    padding: 10px 50px 0px 50px;
+    padding: 10px 50px 10px 50px;
     border-bottom: 2px solid #f0f2f6;
+    height: 85px; /* Fixed height to ensure coverage */
 }
 .main-content { margin-top: -75px; }
 .block-container { padding-top: 1rem !important; }
@@ -186,145 +187,160 @@ if check_password():
     # VIEW 2: ANALYSIS DASHBOARD (Individual Project)
     # ==========================================
     else:
-        # STICKY HEADER with "Save & Return" Button
-        h_col1, h_col2 = st.columns([3, 1])
-        
-        with h_col1:
-            st.markdown(f'''
-            <div class="sticky-wrapper">
-                <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px;">
-                    <div>
-                        <h1 style="margin:0; font-size: 1.8rem; color:#0000FF;">📚 Literature Review Buddy</h1>
-                        <p style="color:#18A48C; margin:0; font-weight: bold;">{st.session_state.active_project} | PhD-Level Research Assistant</p>
-                    </div>
-                </div>
+        # 1. THE STICKY HEADER (Background + Text)
+        st.markdown(f'''
+        <div class="sticky-wrapper">
+            <div>
+                <h1 style="margin:0; font-size: 1.8rem; color:#0000FF;">📚 Literature Review Buddy</h1>
+                <p style="color:#18A48C; margin:0; font-weight: bold;">{st.session_state.active_project} | PhD-Level Research Assistant</p>
             </div>
-            ''', unsafe_allow_html=True)
-            
-        with h_col2:
-            # The "Save & Return" Button
-            st.write("") # Micro alignment
-            # Injecting this button effectively into the visual header space via columns
-            if st.button("💾 Save & Return to Library", use_container_width=True, type="primary"):
-                save_data(st.session_state.projects)
-                st.session_state.active_project = None # Go Home
-                st.rerun()
+        </div>
+        ''', unsafe_allow_html=True)
 
-        st.divider()
-
-        # --- ANALYSIS TOOL CODE ---
+        # 2. THE SAVE BUTTON (Injected with Fixed CSS)
+        # We inject specific CSS just for this button to pin it to the top right
+        st.markdown("""
+        <style>
+        /* Target the primary button in this view */
+        button[kind="primary"] {
+            position: fixed !important;
+            top: 25px !important;
+            right: 50px !important;
+            z-index: 1001 !important; /* Above the sticky wrapper */
+            width: auto !important;
+            background-color: white !important;
+            border-bottom: 2px solid var(--buddy-green) !important;
+            box-shadow: 0px 2px 5px rgba(0,0,0,0.05);
+        }
+        button[kind="primary"]:hover {
+            z-index: 1002 !important;
+            background-color: var(--buddy-green) !important;
+            color: white !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
         
-        llm = None
-        if api_key:
-            llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
-
-        uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
-        run_review = st.button("🔬 Analyse paper", use_container_width=True)
-
-        if uploaded_files and llm and run_review:
-            progress_text = st.empty()
-            
-            for i, file in enumerate(uploaded_files):
-                progress_text.text(f"📖 Critically reviewing: {file.name}...")
-                try:
-                    reader = PdfReader(file)
-                    text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
-                    prompt = f"""
-                    You are a PhD Candidate performing a Systematic Literature Review. Analyze the provided text with extreme academic rigour.
-                    Avoid excessive use of commas; provide fluid, sophisticated academic prose.
-                    Structure your response using ONLY these labels:
-                    [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
-
-                    Requirements:
-                    - [METHODOLOGY]: Design critique, sampling, and statistical validity.
-                    - [RELIABILITY]: Discuss internal/external validity and potential biases.
-                    - No bolding (**). No lists. Use sophisticated academic prose.
-
-                    FULL TEXT: {text[:30000]}
-                    """
-                    res = llm.invoke([HumanMessage(content=prompt)]).content
-                    res = re.sub(r'\*', '', res)
-
-                    def ext(label, next_l=None):
-                        p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
-                        m = re.search(p, res, re.DOTALL | re.IGNORECASE)
-                        return m.group(1).strip() if m else "Not found."
-
-                    # Append to the ACTIVE project list
-                    st.session_state.projects[st.session_state.active_project].append({
-                        "#": len(st.session_state.projects[st.session_state.active_project]) + 1,
-                        "Title": ext("TITLE", "AUTHORS"),
-                        "Authors": ext("AUTHORS", "YEAR"),
-                        "Year": ext("YEAR", "REFERENCE"),
-                        "Reference": ext("REFERENCE", "SUMMARY"),
-                        "Summary": ext("SUMMARY", "BACKGROUND"),
-                        "Background": ext("BACKGROUND", "METHODOLOGY"),
-                        "Methodology": ext("METHODOLOGY", "CONTEXT"),
-                        "Context": ext("CONTEXT", "FINDINGS"),
-                        "Findings": ext("FINDINGS", "RELIABILITY"),
-                        "Reliability": ext("RELIABILITY")
-                    })
-                    
-                    # Auto-save after each paper for safety
-                    save_data(st.session_state.projects)
-                    
-                except Exception as e: st.error(f"Error on {file.name}: {e}")
-            progress_text.empty()
+        # This button is technically rendered in the flow, but CSS pulls it out to Fixed Position
+        if st.button("💾 Save & Return to Library", type="primary"):
+            save_data(st.session_state.projects)
+            st.session_state.active_project = None # Go Home
             st.rerun()
 
-        # Retrieve data for the active project
-        current_data = st.session_state.projects[st.session_state.active_project]
+        # 3. MAIN CONTENT
+        with st.container():
+            st.write("##")
+            st.markdown('<div class="main-content">', unsafe_allow_html=True)
+            llm = None
+            if api_key:
+                llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
 
-        if current_data:
-            t1, t2, t3 = st.tabs(["🖼️ Card Gallery", "📊 Master Table", "🧠 Synthesis"])
-            with t1:
-                for r in reversed(current_data):
-                    with st.container(border=True):
-                        cr, ct = st.columns([1, 12]); cr.metric("Ref", r['#']); ct.subheader(r['Title'])
-                        st.markdown(f'''
-                            <div class="metadata-block">
+            uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
+            run_review = st.button("🔬 Analyse paper", use_container_width=True)
+
+            if uploaded_files and llm and run_review:
+                progress_text = st.empty()
+                if 'session_uploads' not in st.session_state: st.session_state.session_uploads = set()
+
+                for i, file in enumerate(uploaded_files):
+                    if file.name in st.session_state.session_uploads: continue
+                    
+                    progress_text.text(f"📖 Critically reviewing: {file.name}...")
+                    try:
+                        reader = PdfReader(file)
+                        text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
+                        prompt = f"""
+                        You are a PhD Candidate performing a Systematic Literature Review. Analyze the provided text with extreme academic rigour.
+                        Avoid excessive use of commas; provide fluid, sophisticated academic prose.
+                        Structure your response using ONLY these labels:
+                        [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].
+
+                        Requirements:
+                        - [METHODOLOGY]: Design critique, sampling, and statistical validity.
+                        - [RELIABILITY]: Discuss internal/external validity and potential biases.
+                        - No bolding (**). No lists. Use sophisticated academic prose.
+
+                        FULL TEXT: {text[:30000]}
+                        """
+                        res = llm.invoke([HumanMessage(content=prompt)]).content
+                        res = re.sub(r'\*', '', res)
+
+                        def ext(label, next_l=None):
+                            p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
+                            m = re.search(p, res, re.DOTALL | re.IGNORECASE)
+                            return m.group(1).strip() if m else "Not found."
+
+                        st.session_state.projects[st.session_state.active_project].append({
+                            "#": len(st.session_state.projects[st.session_state.active_project]) + 1,
+                            "Title": ext("TITLE", "AUTHORS"),
+                            "Authors": ext("AUTHORS", "YEAR"),
+                            "Year": ext("YEAR", "REFERENCE"),
+                            "Reference": ext("REFERENCE", "SUMMARY"),
+                            "Summary": ext("SUMMARY", "BACKGROUND"),
+                            "Background": ext("BACKGROUND", "METHODOLOGY"),
+                            "Methodology": ext("METHODOLOGY", "CONTEXT"),
+                            "Context": ext("CONTEXT", "FINDINGS"),
+                            "Findings": ext("FINDINGS", "RELIABILITY"),
+                            "Reliability": ext("RELIABILITY")
+                        })
+                        st.session_state.session_uploads.add(file.name)
+                        save_data(st.session_state.projects) # Auto-save
+                        
+                    except Exception as e: st.error(f"Error on {file.name}: {e}")
+                progress_text.empty()
+                st.rerun()
+
+            current_data = st.session_state.projects[st.session_state.active_project]
+
+            if current_data:
+                t1, t2, t3 = st.tabs(["🖼️ Card Gallery", "📊 Master Table", "🧠 Synthesis"])
+                with t1:
+                    for r in reversed(current_data):
+                        with st.container(border=True):
+                            cr, ct = st.columns([1, 12]); cr.metric("Ref", r['#']); ct.subheader(r['Title'])
+                            st.markdown(f'''
+                                <div class="metadata-block">
                                 <span class="metadata-item">🖊️ <b>Authors:</b> {r["Authors"]}</span>
                                 <span class="metadata-item">🗓️ <b>Year:</b> {r["Year"]}</span>
                                 <span class="metadata-item">🔗 <b>Full Citation:</b> {r["Reference"]}</span>
-                            </div>
-                        ''', unsafe_allow_html=True)
-                        st.divider()
-                        sec = [("📝 Summary", r["Summary"]), ("📖 Background", r["Background"]), ("⚙️ Methodology", r["Methodology"]), ("📍 Context", r["Context"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]
-                        for k, v in sec:
-                            st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
-            with t2:
-                df = pd.DataFrame(current_data)
-                st.dataframe(df, use_container_width=True, hide_index=True)
-                # --- FULL WIDTH EXPORT BUTTON ---
-                csv = df.to_csv(index=False).encode('utf-8-sig')
-                st.download_button(
-                    label="📊 Export as CSV file",
-                    data=csv,
-                    file_name=f"{st.session_state.active_project}_review.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
-            with t3:
-                if len(current_data) > 0:
-                    with st.spinner("Performing meta-synthesis..."):
-                        evidence_base = ""
-                        for r in current_data:
-                            evidence_base += f"Paper {r['#']} ({r['Year']}): Findings: {r['Findings']}. Methodology: {r['Methodology']}\n\n"
+                                </div>
+                            ''', unsafe_allow_html=True)
+                            st.divider()
+                            sec = [("📝 Summary", r["Summary"]), ("📖 Background", r["Background"]), ("⚙️ Methodology", r["Methodology"]), ("📍 Context", r["Context"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]
+                            for k, v in sec:
+                                st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
+                with t2:
+                    df = pd.DataFrame(current_data)
+                    st.dataframe(df, use_container_width=True, hide_index=True)
+                    # --- FULL WIDTH EXPORT BUTTON ---
+                    csv = df.to_csv(index=False).encode('utf-8-sig')
+                    st.download_button(
+                        label="📊 Export as CSV file",
+                        data=csv,
+                        file_name=f"{st.session_state.active_project}_review.csv",
+                        mime="text/csv",
+                        use_container_width=True
+                    )
+                with t3:
+                    if len(current_data) > 0:
+                        with st.spinner("Performing meta-synthesis..."):
+                            evidence_base = ""
+                            for r in current_data:
+                                evidence_base += f"Paper {r['#']} ({r['Year']}): Findings: {r['Findings']}. Methodology: {r['Methodology']}\n\n"
 
-                        synth_prompt = f"Meta-Synthesis: Analyze theoretical contributions and trends. Use [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS]. Academic prose, no bolding.\n\nEvidence Base:\n{evidence_base}"
-                        raw_synth = llm.invoke([HumanMessage(content=synth_prompt)]).content
-                        clean_synth = re.sub(r'\*', '', raw_synth)
+                            synth_prompt = f"Meta-Synthesis: Analyze theoretical contributions and trends. Use [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE_DIRECTIONS]. Academic prose, no bolding.\n\nEvidence Base:\n{evidence_base}"
+                            raw_synth = llm.invoke([HumanMessage(content=synth_prompt)]).content
+                            clean_synth = re.sub(r'\*', '', raw_synth)
 
-                        def get_synth(label, next_l=None):
-                            p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
-                            m = re.search(p, clean_synth, re.DOTALL | re.IGNORECASE)
-                            return m.group(1).strip() if m else "Detail not found."
+                            def get_synth(label, next_l=None):
+                                p = rf"\[{label}\]:?\s*(.*?)(?=\s*\[{next_l}\]|$)" if next_l else rf"\[{label}\]:?\s*(.*)"
+                                m = re.search(p, clean_synth, re.DOTALL | re.IGNORECASE)
+                                return m.group(1).strip() if m else "Detail not found."
 
-                        with st.container(border=True):
-                            st.markdown("### 🎯 Executive Overview"); st.write(get_synth("OVERVIEW", "PATTERNS"))
-                        with st.container(border=True):
-                            st.markdown("### 📈 Cross-Study Patterns"); st.write(get_synth("PATTERNS", "CONTRADICTIONS"))
-                        with st.container(border=True):
-                            st.markdown("### ⚖️ Conflicts & Contradictions"); st.write(get_synth("CONTRADICTIONS", "FUTURE_DIRECTIONS"))
-                        with st.container(border=True):
-                            st.markdown("### 🚀 Future Research Directions"); st.write(get_synth("FUTURE_DIRECTIONS"))
+                            with st.container(border=True):
+                                st.markdown("### 🎯 Executive Overview"); st.write(get_synth("OVERVIEW", "PATTERNS"))
+                            with st.container(border=True):
+                                st.markdown("### 📈 Cross-Study Patterns"); st.write(get_synth("PATTERNS", "CONTRADICTIONS"))
+                            with st.container(border=True):
+                                st.markdown("### ⚖️ Conflicts & Contradictions"); st.write(get_synth("CONTRADICTIONS", "FUTURE_DIRECTIONS"))
+                            with st.container(border=True):
+                                st.markdown("### 🚀 Future Research Directions"); st.write(get_synth("FUTURE_DIRECTIONS"))
