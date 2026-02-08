@@ -35,16 +35,14 @@ st.markdown("""
     --buddy-blue: #0000FF;
 }
 
-/* GLOBAL RESET: Remove top padding from Streamlit */
+/* GLOBAL RESET */
 [data-testid="block-container"] {
     padding-top: 1rem !important;
 }
 
 /* -------------------------
-   PROJECT LIBRARY STYLES
+   LIBRARY PAGE STYLES
    ------------------------- */
-
-/* Icon Buttons (Bin/Arrow) - Centered & Clean */
 .icon-btn button {
     background: transparent !important;
     border: none !important;
@@ -60,24 +58,14 @@ st.markdown("""
     background: #f0f2f6 !important;
     border-radius: 5px !important;
 }
-
-/* Bin Hover Red */
-.bin-btn button:hover {
-    color: red !important;
-    background: #ffe6e6 !important;
-}
-
-/* Arrow Hover Green */
-.arrow-btn button:hover {
-    color: var(--buddy-green) !important;
-    background: #e6fffa !important;
-}
+.bin-btn button:hover { color: red !important; background: #ffe6e6 !important; }
+.arrow-btn button:hover { color: var(--buddy-green) !important; background: #e6fffa !important; }
 
 /* -------------------------
    PROJECT PAGE STYLES
    ------------------------- */
 
-/* The Fixed Header Background */
+/* FIXED HEADER (Title Only) */
 .fixed-header-bg {
     position: fixed;
     top: 0;
@@ -92,45 +80,28 @@ st.markdown("""
     align-items: center;
 }
 
-/* Title Text inside Fixed Header */
-.fixed-header-text h1 { margin: 0; font-size: 1.8rem; color: #0000FF; line-height: 1.2; }
-.fixed-header-text p { margin: 0; font-size: 0.9rem; color: #18A48C; font-weight: bold; }
-
-/* FIXED BUTTONS (Save / Library) */
-/* We target the buttons inside the specific container class we add in Python */
-.top-right-buttons {
-    position: fixed;
-    top: 25px;
-    right: 50px;
-    z-index: 1001;
-    display: flex;
-    gap: 10px;
-}
-.top-right-buttons button {
-    background-color: white !important;
-    border: 1px solid #ddd !important;
-    color: #333 !important;
-    font-size: 0.9rem !important;
-    padding: 0px 15px !important;
-    height: 38px !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-}
-.top-right-buttons button:hover {
-    border-color: var(--buddy-green) !important;
-    color: var(--buddy-green) !important;
-}
+.fixed-header-text h1 { margin: 0; font-size: 2.2rem; color: #0000FF; line-height: 1.1; }
+.fixed-header-text p { margin: 0; font-size: 1rem; color: #18A48C; font-weight: bold; }
 
 /* Spacer to push content below fixed header */
 .header-spacer {
-    height: 60px; 
+    height: 80px; 
     width: 100%;
+}
+
+/* BOTTOM ACTION BAR */
+.bottom-actions {
+    margin-top: 30px;
+    padding-top: 20px;
+    padding-bottom: 40px;
+    border-top: 1px solid #eee;
 }
 
 /* General Input Styling */
 [data-testid="stTextInput"] div[data-baseweb="input"] { border: 1px solid #d3d3d3 !important; }
 [data-testid="stTextInput"] div[data-baseweb="input"]:focus-within { border: 2px solid var(--buddy-green) !important; }
 
-/* Analysis Button */
+/* Button General */
 div.stButton > button:first-child {
     border: 1px solid var(--buddy-green) !important;
     color: var(--buddy-green) !important;
@@ -175,7 +146,6 @@ if check_password():
     # ==========================================
     if st.session_state.active_project is None:
         
-        # Simple Header (Not Fixed)
         st.markdown("""
         <div>
             <h1 style="margin:0; font-size: 2.5rem; color:#0000FF;">🗂️ Project Library</h1>
@@ -183,7 +153,6 @@ if check_password():
         </div>
         """, unsafe_allow_html=True)
 
-        # Create New Project
         with st.container(border=True):
             c1, c2 = st.columns([4, 1])
             new_name = c1.text_input("New Project Name", placeholder="e.g. AI Ethics 2026", label_visibility="collapsed")
@@ -198,7 +167,6 @@ if check_password():
 
         st.write("###") 
 
-        # Project List
         projects = list(st.session_state.projects.keys())
         
         if not projects:
@@ -207,7 +175,6 @@ if check_password():
             st.markdown("### Your Projects")
             for proj_name in projects:
                 with st.container(border=True):
-                    # Layout: Name (Left) | Delete (Icon) | Open (Icon)
                     col_name, col_spacer, col_del, col_open = st.columns([6, 2, 0.5, 0.5])
                     
                     with col_name:
@@ -235,40 +202,18 @@ if check_password():
     # VIEW 2: ANALYSIS DASHBOARD (Individual Project)
     # ==========================================
     else:
-        # 1. FIXED VISUAL HEADER (HTML)
-        # This sits behind the buttons and creates the white background bar
+        # 1. FIXED HEADER (Updated Title Logic)
         st.markdown(f'''
         <div class="fixed-header-bg">
             <div class="fixed-header-text">
-                <h1>📚 Literature Review Buddy</h1>
-                <p>{st.session_state.active_project} | PhD-Level Analysis</p>
+                <h1>{st.session_state.active_project}</h1>
+                <p>PhD-Level Analysis</p>
             </div>
         </div>
+        <div class="header-spacer"></div>
         ''', unsafe_allow_html=True)
 
-        # 2. FIXED BUTTONS (Save / Library)
-        # We render these at the very top of the script flow.
-        # The CSS class .top-right-buttons pulls them out of flow and pins them top-right.
-        
-        with st.container():
-            st.markdown('<div class="top-right-buttons">', unsafe_allow_html=True)
-            b1, b2 = st.columns([1, 1])
-            with b1:
-                if st.button("💾 Save", key="save_header"):
-                    save_data(st.session_state.projects)
-                    st.toast("Saved!", icon="✅")
-            with b2:
-                if st.button("🏠 Library", key="home_header"):
-                    save_data(st.session_state.projects)
-                    st.session_state.active_project = None
-                    st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        # 3. SPACER
-        # Pushes the main content down so it doesn't get hidden by the fixed header
-        st.markdown('<div class="header-spacer"></div>', unsafe_allow_html=True)
-
-        # 4. MAIN CONTENT
+        # 2. MAIN CONTENT
         llm = None
         if api_key:
             llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
@@ -382,4 +327,22 @@ if check_password():
                             st.markdown("### ⚖️ Conflicts & Contradictions"); st.write(get_synth("CONTRADICTIONS", "FUTURE_DIRECTIONS"))
                         with st.container(border=True):
                             st.markdown("### 🚀 Future Research Directions"); st.write(get_synth("FUTURE_DIRECTIONS"))
-                        
+
+        # 3. BOTTOM BUTTONS (Footer Area)
+        # This renders at the very bottom of the page flow
+        st.write("##")
+        st.markdown('<div class="bottom-actions">', unsafe_allow_html=True)
+        
+        # Use columns to align right or center. Let's do Right aligned.
+        f1, f2, f3 = st.columns([6, 1, 1])
+        with f2:
+            if st.button("💾 Save Progress", use_container_width=True):
+                save_data(st.session_state.projects)
+                st.toast("Saved!", icon="✅")
+        with f3:
+            if st.button("🏠 Library", use_container_width=True):
+                save_data(st.session_state.projects) # Auto-save on exit
+                st.session_state.active_project = None
+                st.rerun()
+        
+        st.markdown('</div>', unsafe_allow_html=True)
