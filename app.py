@@ -47,6 +47,12 @@ st.markdown("""
         gap: 0.4rem !important; /* Reduces gap between project rows by ~50% */
     }
 
+    /* VERTICAL ALIGNMENT FIX: Forces the X button to sit in the vertical center of the row */
+    [data-testid="stSidebar"] [data-testid="column"] {
+        display: flex !important;
+        align-items: center !important;
+    }
+
     .del-btn > div > button {
         border: none !important;
         color: #ff4b4b !important;
