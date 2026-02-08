@@ -50,23 +50,28 @@ st.markdown("""
 }
 
 /* -------------------------
-   LIBRARY PAGE STYLES
+   ICON BUTTON CENTERING FIX
    ------------------------- */
 .icon-btn button {
     background: transparent !important;
     border: none !important;
     padding: 0rem !important;
     font-size: 1.5rem !important;
+    
+    /* PERFECT CENTERING LOGIC */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     line-height: 1 !important;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100% !important;
+    height: 40px !important;
+    width: 40px !important;
 }
+
 .icon-btn button:hover {
     background: #f0f2f6 !important;
     border-radius: 0.3rem !important;
 }
+
 .bin-btn button:hover { color: red !important; background: #ffe6e6 !important; }
 .arrow-btn button:hover { color: var(--buddy-green) !important; background: #e6fffa !important; }
 .edit-btn button:hover { color: #FFA500 !important; background: #fff5e6 !important; }
@@ -271,21 +276,16 @@ if check_password():
         if papers_data:
             t1, t2, t3 = st.tabs(["🖼️ Card Gallery", "📊 Master Table", "🧠 Synthesis"])
             with t1:
-                # Iterate with original indices to handle deletion correctly
                 for idx, r in enumerate(reversed(papers_data)):
-                    # Correct index calculation for reversed list
                     real_idx = len(papers_data) - 1 - idx
-                    
                     with st.container(border=True):
                         cr, ct, cdel = st.columns([1, 12, 0.5])
                         cr.metric("Ref", r['#'])
                         ct.subheader(r['Title'])
-                        
                         with cdel:
                             st.markdown('<div class="icon-btn bin-btn">', unsafe_allow_html=True)
-                            if st.button("🗑️", key=f"del_paper_{real_idx}", help="Wipe paper from memory"):
+                            if st.button("🗑️", key=f"del_paper_{real_idx}"):
                                 st.session_state.projects[st.session_state.active_project]["papers"].pop(real_idx)
-                                # Re-index Ref numbers
                                 for i, p in enumerate(st.session_state.projects[st.session_state.active_project]["papers"]):
                                     p["#"] = i + 1
                                 save_data(st.session_state.projects)
@@ -319,9 +319,9 @@ if check_password():
         st.markdown('<div class="bottom-actions">', unsafe_allow_html=True)
         f1, f2, f3 = st.columns([6, 1, 1])
         with f2:
-            if st.button("💾 Save", use_container_width=True):
+            if st.button("💾 Save", key="final_save", use_container_width=True):
                 save_data(st.session_state.projects); st.toast("Saved!", icon="✅")
         with f3:
-            if st.button("🏠 Library", use_container_width=True):
+            if st.button("🏠 Library", key="final_lib", use_container_width=True):
                 save_data(st.session_state.projects); st.session_state.active_project = None; st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
