@@ -33,12 +33,13 @@ st.markdown("""
     [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
     :root { --buddy-green: #18A48C; --buddy-blue: #0000FF; }
     
-    /* REMOVE DEFAULT STREAMLIT PADDING */
-    /* This pulls the main content up closer to the top of the page */
+    /* REMOVE ALL DEFAULT TOP PADDING to kill the gap */
     [data-testid="block-container"] {
-        padding-top: 2rem !important;
+        padding-top: 0rem !important;
+        margin-top: 0rem !important;
     }
 
+    /* Fixed Header */
     .sticky-wrapper { 
         position: fixed; 
         top: 0; 
@@ -46,24 +47,32 @@ st.markdown("""
         width: 100%; 
         background-color: white; 
         z-index: 1000; 
-        padding: 10px 50px 10px 50px; 
+        padding: 15px 50px 10px 50px; 
         border-bottom: 2px solid #f0f2f6; 
     }
     
-    /* Adjust margin to account for fixed header but keep it tight */
-    .main-content { margin-top: 60px; }
+    /* Main Content - Pulled up tight against the header */
+    .main-content { 
+        margin-top: 90px; /* Adjust based on header height to prevent overlap */
+    }
     
-    /* Buttons Styling */
+    /* General Button Styling */
     div.stButton > button:first-child, div.stDownloadButton > button:first-child {
         width: 100% !important; color: var(--buddy-green) !important; border: 1px solid var(--buddy-green) !important; font-weight: bold !important; background-color: transparent !important;
     }
     div.stButton > button:hover, div.stDownloadButton > button:hover { background-color: var(--buddy-green) !important; color: white !important; }
     
-    /* Sidebar Spacing */
+    /* SIDEBAR SPACING */
     [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
-        gap: 0.2rem !important; /* Adjusted to 0.2rem */
+        gap: 0.15rem !important; /* Tight spacing for project list */
     }
 
+    /* SPECIFIC FIX: 0.2rem gap between Input and Create Button in Sidebar */
+    /* Target the container of the text input to reduce its bottom margin */
+    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] > div:has(input) {
+        margin-bottom: 0.2rem !important;
+    }
+    
     .del-btn > div > button {
         border: none !important;
         color: #ff4b4b !important;
@@ -75,6 +84,20 @@ st.markdown("""
     .del-btn > div > button:hover {
         color: #b30000 !important;
         background: transparent !important;
+    }
+
+    /* Save Button (Emoji Only) Styling */
+    .save-btn-container button {
+        border: none !important;
+        font-size: 1.5rem !important;
+        padding: 0px !important;
+        background: transparent !important;
+        width: auto !important;
+        float: right;
+    }
+    .save-btn-container button:hover {
+        background: transparent !important;
+        transform: scale(1.1);
     }
 
     .section-title { font-weight: bold; color: #0000FF; margin-top: 15px; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid #eee; }
@@ -107,7 +130,10 @@ if check_password():
     with st.sidebar:
         st.title("📁 Research Manager")
         
-        new_proj_name = st.text_input("Name for New Review", placeholder="e.g. AI Ethics 2026")
+        # New Project Input
+        new_proj_name = st.text_input("Name for New Review", placeholder="e.g. AI Ethics 2026", label_visibility="collapsed")
+        
+        # Create Button
         if st.button("➕ Create Project"):
             if new_proj_name and new_proj_name not in st.session_state.projects:
                 st.session_state.projects[new_proj_name] = []
@@ -144,16 +170,18 @@ if check_password():
     head_col1, head_col2 = st.columns([4, 1])
     with head_col1:
         st.markdown(f'<h1 style="margin:0; font-size: 1.8rem; color:#0000FF;">📚 {st.session_state.active_project}</h1>', unsafe_allow_html=True)
-        st.markdown('<p style="color:#18A48C; margin-bottom:5px; font-weight: bold;">PhD-Level Analysis Mode</p>', unsafe_allow_html=True)
+        st.markdown('<p style="color:#18A48C; margin:0; font-weight: bold; font-size: 0.9rem;">PhD-Level Analysis Mode</p>', unsafe_allow_html=True)
     with head_col2:
-        st.write("##") # Spacer for alignment
-        if st.button("💾 Save Progress"):
+        # Save Button (Emoji Only)
+        st.markdown('<div class="save-btn-container">', unsafe_allow_html=True)
+        if st.button("💾", help="Save Progress"):
             save_data(st.session_state.projects)
             st.toast("Project Saved!", icon="✅")
+        st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
     # --- MAIN CONTENT ---
-    # Removed the extra st.write("##") spacers that were adding gaps
+    # No extra spacers, just the content div
     st.markdown('<div class="main-content">', unsafe_allow_html=True)
     
     api_key = st.secrets.get("GEMINI_API_KEY")
