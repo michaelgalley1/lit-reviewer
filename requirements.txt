@@ -1,7 +1,6 @@
 streamlit
 pandas
 pypdf
-langchain>=0.3.0
-langchain-community
-langchain-core
 langchain-google-genai
+st-gsheets-connection
+gspread
