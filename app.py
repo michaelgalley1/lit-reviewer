@@ -52,7 +52,6 @@ st.markdown("""
 /* -------------------------
    GLOBAL HOVER LOGIC
    ------------------------- */
-/* Targets every button in the app to use the buddy-green on hover */
 div[data-testid="stButton"] button:hover {
     background-color: var(--buddy-green) !important;
     color: white !important;
@@ -74,11 +73,13 @@ div[data-testid="stButton"] button:hover {
 }
 
 /* -------------------------
-   CARD DELETE BUTTON (Right Aligned)
+   CARD HEADER FLEX (Title + Delete)
    ------------------------- */
-.card-del-container {
+.card-header-flex {
     display: flex;
-    justify-content: flex-end; /* Force button to the far right */
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
 }
 
 .card-del-container div[data-testid="stButton"] button {
@@ -88,6 +89,7 @@ div[data-testid="stButton"] button:hover {
     font-size: 0.85rem !important;
     height: 32px !important;
     padding: 0 15px !important;
+    white-space: nowrap;
 }
 
 /* -------------------------
@@ -124,7 +126,6 @@ div[data-testid="stButton"] button:hover {
 [data-testid="stTextInput"] div[data-baseweb="input"] { border: 0.06rem solid #d3d3d3 !important; }
 [data-testid="stTextInput"] div[data-baseweb="input"]:focus-within { border: 0.125rem solid var(--buddy-green) !important; }
 
-/* Default state for standard buttons */
 div[data-testid="stButton"] > button:not([kind="secondary"]) {
     border: 0.06rem solid var(--buddy-green) !important;
     color: var(--buddy-green) !important;
@@ -289,24 +290,30 @@ if check_password():
                 for idx, r in enumerate(reversed(papers_data)):
                     real_idx = len(papers_data) - 1 - idx
                     with st.container(border=True):
-                        # Layout to force delete to the right
-                        cr, ct = st.columns([1, 12])
-                        cr.metric("Ref", r['#'])
-                        ct.subheader(r['Title'])
+                        # Use two main columns: Ref indicator and everything else
+                        col_metric, col_main = st.columns([1, 14])
                         
-                        # New row just for the right-aligned button
-                        c_spacer, cdel = st.columns([10, 3])
-                        with cdel:
-                            st.markdown('<div class="card-del-container">', unsafe_allow_html=True)
-                            if st.button("🗑️ Delete Paper", key=f"del_paper_{real_idx}"):
-                                st.session_state.projects[st.session_state.active_project]["papers"].pop(real_idx)
-                                for i, p in enumerate(st.session_state.projects[st.session_state.active_project]["papers"]):
-                                    p["#"] = i + 1
-                                save_data(st.session_state.projects)
-                                st.rerun()
-                            st.markdown('</div>', unsafe_allow_html=True)
+                        with col_metric:
+                            st.metric("Ref", r['#'])
+                        
+                        with col_main:
+                            # Use nested columns to put Title and Delete on the same line
+                            col_title, col_del = st.columns([10, 3])
+                            with col_title:
+                                st.subheader(r['Title'])
+                            with col_del:
+                                st.markdown('<div class="card-del-container">', unsafe_allow_html=True)
+                                if st.button("🗑️ Delete Paper", key=f"del_paper_{real_idx}"):
+                                    st.session_state.projects[st.session_state.active_project]["papers"].pop(real_idx)
+                                    for i, p in enumerate(st.session_state.projects[st.session_state.active_project]["papers"]):
+                                        p["#"] = i + 1
+                                    save_data(st.session_state.projects)
+                                    st.rerun()
+                                st.markdown('</div>', unsafe_allow_html=True)
 
-                        st.markdown(f'<div class="metadata-block"><span class="metadata-item">🖊️ Authors: {r["Authors"]}</span><br><span class="metadata-item">🗓️ Year: {r["Year"]}</span><br><span class="metadata-item">🔗 Full Citation: {r["Reference"]}</span></div>', unsafe_allow_html=True)
+                            # Metadata directly under the title row
+                            st.markdown(f'<div class="metadata-block"><span class="metadata-item">🖊️ Authors: {r["Authors"]}</span><br><span class="metadata-item">🗓️ Year: {r["Year"]}</span><br><span class="metadata-item">🔗 Full Citation: {r["Reference"]}</span></div>', unsafe_allow_html=True)
+                        
                         st.divider()
                         sec = [("📝 Summary", r["Summary"]), ("📖 Background", r["Background"]), ("⚙️ Methodology", r["Methodology"]), ("📍 Context", r["Context"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]
                         for k, v in sec: st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
