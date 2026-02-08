@@ -79,7 +79,7 @@ st.markdown("""
     top: 0;
     left: 0;
     width: 100%;
-    height: 1.5rem; 
+    height: 4.5rem; 
     background: white;
     border-bottom: 0.125rem solid #f0f2f6;
     z-index: 1000;
