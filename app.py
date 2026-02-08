@@ -10,13 +10,14 @@ import time
 # 1. PAGE CONFIGURATION
 st.set_page_config(page_title="Literature Review Buddy", page_icon="📚", layout="wide")
 
-# 2. DATABASE CONNECTION
+# 2. DATABASE CONNECTION (Google Sheets)
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def load_full_library():
     try:
         df = conn.read(ttl=0)
-        if df is None or df.empty or 'Project' not in df.columns: return {}
+        if df is None or df.empty or 'Project' not in df.columns: 
+            return {}
         library = {}
         for _, row in df.iterrows():
             proj = row.get('Project')
@@ -31,7 +32,8 @@ def load_full_library():
                     "Context": row.get('Context'), "Findings": row.get('Findings'), "Reliability": row.get('Reliability')
                 })
         return library
-    except Exception: return {}
+    except Exception:
+        return {}
 
 def save_full_library(library):
     flat_data = []
@@ -57,12 +59,13 @@ st.markdown("""
 <style>
 [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
 :root { --buddy-green: #18A48C; --buddy-blue: #0000FF; }
+[data-testid="block-container"] { padding-top: 0rem !important; }
 .section-title { font-weight: bold; color: #0000FF; margin-top: 1rem; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 0.06rem solid #eee; }
 .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
 .fixed-header-bg { position: fixed; top: 0; left: 0; width: 100%; height: 4.5rem; background: white; border-bottom: 0.125rem solid #f0f2f6; z-index: 1000; padding-left: 3.75rem; display: flex; align-items: center; }
 .fixed-header-text h1 { margin: 0; font-size: 2.2rem; color: #0000FF; }
 .upload-pull-up { margin-top: -3.0rem !important; }
-.synth-container { background-color: #f8f9fa; padding: 25px; border-radius: 12px; border-left: 8px solid #0000FF; margin-top: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+.synth-container { background-color: #f8f9fa; padding: 25px; border-radius: 12px; border-left: 8px solid #0000FF; margin-top: 10px; }
 .icon-btn div[data-testid="stButton"] button { height: 38px !important; width: 38px !important; padding: 0 !important; border: none !important; background: transparent !important; }
 </style>
 """, unsafe_allow_html=True)
@@ -186,39 +189,30 @@ else:
             st.download_button("📥 Export to CSV", data=csv, file_name=f"{st.session_state.active_project}_review.csv", mime='text/csv')
         with t3:
             st.markdown('<div class="synth-container">', unsafe_allow_html=True)
-            st.markdown("### 🧠 Academic Synthesis")
-            st.markdown("This section analyzes common themes, contradictions, and gaps across all uploaded papers in this project.")
-            
-            if st.button("🛠️ Generate/Refresh Synthesis"):
-                with st.spinner("PhD Buddy is synthesizing themes..."):
-                    # Pull findings from all papers
-                    evidence_list = []
-                    for p in papers_data:
-                        ref_num = p.get('#', '?')
-                        findings_text = p.get('Findings', 'No findings recorded.')
-                        evidence_list.append(f"Paper {ref_num}: {findings_text}")
-                    
-                    full_evidence = "\n\n".join(evidence_list)
-                    
-                    synthesis_prompt = (
-                        "You are an expert PhD Supervisor. Provide a critical synthesis of the following research findings. "
-                        "Identify: 1) Common themes across papers. 2) Significant contradictions or debates. "
-                        "3) Gaps in the current research. 4) A concluding summary of the project's overall contribution. "
-                        "Format with clear headings and a professional academic tone.\n\n"
-                        f"FINDINGS DATA:\n{full_evidence}"
-                    )
-                    
-                    try:
-                        synth_res = llm.invoke([HumanMessage(content=synthesis_prompt)]).content
-                        st.session_state[f"synth_{st.session_state.active_project}"] = synth_res
-                    except Exception as e:
-                        st.error(f"AI Synthesis failed: {e}")
-
-            # Display saved synthesis if it exists
             stored_synth = st.session_state.get(f"synth_{st.session_state.active_project}")
             if stored_synth:
-                st.markdown("---")
                 st.markdown(stored_synth)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            s_col1, s_col2 = st.columns([8, 2])
+            with s_col2:
+                if st.button("🔄 Try Again", use_container_width=True):
+                    with st.spinner("PhD Buddy is synthesizing themes..."):
+                        evidence = "".join([f"Paper {r.get('#')}: {r.get('Findings')}\n" for r in papers_data])
+                        synthesis_prompt = (
+                            "Act as a PhD Supervisor. Synthesize the findings provided. "
+                            "Use emojis for each heading and maintain a professional academic tone. "
+                            "Structure the response with these EXACT headings:\n\n"
+                            "📋 **Overview of papers**\n"
+                            "🤝 **Overlaps in their findings**\n"
+                            "⚔️ **Contradictions in their findings**\n"
+                            "🚀 **Suggestions for future research**\n"
+                            "📝 **Summary of synthesis**\n\n"
+                            f"DATA:\n{evidence}"
+                        )
+                        res = llm.invoke([HumanMessage(content=synthesis_prompt)]).content
+                        st.session_state[f"synth_{st.session_state.active_project}"] = res
+                        st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
 
     # RIGHT ALIGNED ACTIONS
