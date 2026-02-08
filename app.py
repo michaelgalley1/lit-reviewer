@@ -49,22 +49,6 @@ st.markdown("""
     padding-bottom: 2rem !important;
 }
 
-/* TAB STYLING - Green underline & Green text (Hiding default red) */
-button[data-baseweb="tab"] {
-    background-color: transparent !important;
-}
-button[data-baseweb="tab"]:hover {
-    color: var(--buddy-green) !important;
-}
-button[data-baseweb="tab"][aria-selected="true"] {
-    color: var(--buddy-green) !important;
-    border-bottom-color: var(--buddy-green) !important;
-}
-div[data-baseweb="tab-highlight"] {
-    background-color: transparent !important;
-    visibility: hidden !important;
-}
-
 /* INPUT BOX HOVER/FOCUS */
 [data-testid="stTextInput"] div[data-baseweb="input"] {
     border: 1px solid #d3d3d3 !important;
@@ -137,8 +121,8 @@ div[data-testid="stButton"] button:hover {
 }
 
 .bottom-actions {
-    margin-top: 1rem;       
-    padding-top: 1rem;       
+    margin-top: 1rem;      
+    padding-top: 1rem;      
     padding-bottom: 2rem;
     border-top: 0.06rem solid #eee;
 }
@@ -183,7 +167,7 @@ if check_password():
 
     if st.session_state.active_project is None:
         # LIBRARY VIEW
-        st.markdown('<div><h1 style="margin:0; font-size: 2.5rem; color:#0000FF;">🗂️ Project Library</h1><p style="color:#18A48C; font-weight: bold; font-size: 1.1rem; margin-bottom: 1.25rem;">Select an existing review or start a new one</p></div>', unsafe_allow_html=True)
+        st.markdown('<div><h1 style="margin:0; font-size: 2.5rem; color:#0000FF;">🗂️ Project Library</h1><p style="color:#18A48C; font-weight: bold; font-size: 1.1rem; margin-bottom: 1.25rem;">Select an existing review or start a new one.</p></div>', unsafe_allow_html=True)
 
         with st.container(border=True):
             c1, c2 = st.columns([4, 1])
@@ -221,7 +205,7 @@ if check_password():
                         with col_name:
                             proj_data = st.session_state.projects[proj_name]
                             p_count = len(proj_data["papers"]) if isinstance(proj_data, dict) else len(proj_data)
-                            st.markdown(f"<div style='display:flex; flex-direction:column; justify-content:center; height:100%;'><h3 style='margin:0; padding:0; font-size:1.1rem; color:#0000FF;'>{proj_name}</h3><span style='font-size:0.85rem; color:#666;'>📚 {p_count} Papers</span></div>", unsafe_allow_html=True)
+                            st.markdown(f"<div style='display:flex; flex-direction:column; justify-content:center; height:100%;'><h3 style='margin:0; padding:0; font-size:1.1rem; color:#333;'>📍 {proj_name}</h3><span style='font-size:0.85rem; color:#666;'>📚 {p_count} Papers</span></div>", unsafe_allow_html=True)
                         with col_edit:
                             st.markdown('<div class="icon-btn">', unsafe_allow_html=True)
                             if st.button("🖊️", key=f"edit_{proj_name}"):
@@ -268,21 +252,28 @@ if check_password():
                     reader = PdfReader(file)
                     text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
                     
+                    # --- THE INTEGRATED SMARTER PHD PROMPT ---
                     prompt = (
                         "Act as a Senior Academic Researcher and PhD Supervisor specializing in Systematic Literature Reviews. "
+                        "Your goal is to provide a high-level, critical appraisal of the provided text. Do not simply summarize; "
+                        "evaluate the logic, methodology, and contribution to the field. "
                         "Carefully analyze the provided paper text and extract information for the following categories:\n\n"
                         "[TITLE]: The full academic title of the paper.\n"
                         "[AUTHORS]: List all primary authors.\n"
                         "[YEAR]: Year of publication.\n"
                         "[REFERENCE]: Provide a full Harvard-style citation.\n"
                         "[SUMMARY]: A concise overview (2-3 sentences) of the paper's core objective and outcome.\n"
-                        "[BACKGROUND]: What specific gap in the existing literature are the authors trying to fill?\n"
-                        "[METHODOLOGY]: Identify research design, sample size (N=), and tools used.\n"
-                        "[CONTEXT]: Location and population.\n"
-                        "[FINDINGS]: Primary results and significance.\n"
-                        "[RELIABILITY]: Critique of limitations and potential biases.\n\n"
-                        "FORMATTING: Output ONLY labels in brackets followed by text. No stars or bolding."
-                        f"\n\nTEXT TO ANALYZE: {text[:30000]}"
+                        "[BACKGROUND]: What specific gap in the existing literature are the authors trying to fill? What is the theoretical framework?\n"
+                        "[METHODOLOGY]: Identify the research design (e.g., Experimental, Qualitative, Meta-Analysis), the sample size (N=), and the specific tools/instruments used.\n"
+                        "[CONTEXT]: Where is the study set or the papers from? (e.g. country, population included in analyses).\n"
+                        "[FINDINGS]: What are the primary results? Be specific about statistical significance or core themes discovered. How does this work build upon or contradict previous seminal works in the field?\n"
+                        "[RELIABILITY]: Critically evaluate the study. Are there limitations in the sample? Potential biases? Does the conclusion actually follow from the data provided? Check if the authors mentioned p-values or confidence intervals.\n\n"
+                        "STRICT FORMATTING RULES:\n"
+                        "- Output ONLY the labels above in brackets followed by your analysis.\n"
+                        "- Do not include an introduction, a 'Here is the analysis,' or a conclusion.\n"
+                        "- Do not use bolding or bullet points within the text.\n"
+                        "- If information is missing, write 'Not explicitly stated in text.'\n\n"
+                        f"TEXT TO ANALYZE: {text[:30000]}"
                     )
                     
                     res = llm.invoke([HumanMessage(content=prompt)]).content
@@ -295,8 +286,8 @@ if check_password():
                     
                     new_paper = {
                         "#": len(current_proj["papers"]) + 1, 
-                        "Title": ext("TITLE"), # CASED AS FOUND
-                        "Authors": ext("AUTHORS"), # CASED AS FOUND
+                        "Title": ext("TITLE"), 
+                        "Authors": ext("AUTHORS"), 
                         "Year": ext("YEAR"), 
                         "Reference": ext("REFERENCE"), 
                         "Summary": ext("SUMMARY"), 
@@ -351,48 +342,19 @@ if check_password():
                 df = pd.DataFrame(papers_data)
                 st.dataframe(df, use_container_width=True, hide_index=True)
                 st.download_button(label="📊 Export CSV", data=df.to_csv(index=False).encode('utf-8-sig'), file_name=f"{st.session_state.active_project}.csv", use_container_width=True)
-            
             with t3:
-                # SYNTHESIS CARD 
-                with st.container(border=True):
+                with st.spinner("Generating Meta-Synthesis..."):
                     evidence = "".join([f"Paper {r.get('#')} ({r.get('Year')}): Findings: {r.get('Findings')}\n" for r in papers_data])
-                    synth_p = f"Critical meta-synthesis of findings. Labels: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE]. Evidence: {evidence}"
+                    synth_p = f"Synthesis of literature. Labels: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE]. Evidence: {evidence}"
                     raw_s = llm.invoke([HumanMessage(content=synth_p)]).content
                     clean_s = re.sub(r'\*', '', raw_s)
                     def gs(l, n=None):
                         p = rf"\[{l}\]:?\s*(.*?)(?=\s*\[{n}\]|$)" if n else rf"\[{l}\]:?\s*(.*)"
                         m = re.search(p, clean_s, re.DOTALL | re.IGNORECASE); return m.group(1).strip() if m else "Detail not found."
-                    
-                    # 2x2 Grid Layout
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        with st.container(border=True):
-                            st.markdown("📋 **Overview of papers**")
-                            st.write(gs("OVERVIEW", "PATTERNS"))
-                    with c2:
-                        with st.container(border=True):
-                            st.markdown("🤝 **Overlaps in their findings**")
-                            st.write(gs("PATTERNS", "CONTRADICTIONS"))
-                    
-                    c3, c4 = st.columns(2)
-                    with c3:
-                        with st.container(border=True):
-                            st.markdown("⚔️ **Contradictions in their findings**")
-                            st.write(gs("CONTRADICTIONS", "FUTURE"))
-                    with c4:
-                        with st.container(border=True):
-                            st.markdown("🚀 **Suggestions for future research**")
-                            st.write(gs("FUTURE"))
-                    
-                    with st.container(border=True):
-                        st.markdown("📝 **Summary of synthesis**")
-                        st.write("Cross-comparison of current literature suggests a strong thematic alignment on core principles, despite isolated methodological divergences.")
-
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    sc1, sc2 = st.columns([8.5, 1.5])
-                    with sc2:
-                        if st.button("🔄 Try Again", use_container_width=True):
-                            st.rerun()
+                    st.markdown("### 🎯 Executive Overview"); st.write(gs("OVERVIEW", "PATTERNS"))
+                    st.markdown("### 📈 Cross-Study Patterns"); st.write(gs("PATTERNS", "CONTRADICTIONS"))
+                    st.markdown("### ⚖️ Conflicts & Contradictions"); st.write(gs("CONTRADICTIONS", "FUTURE"))
+                    st.markdown("### 🚀 Future Research Directions"); st.write(gs("FUTURE"))
 
         st.markdown('<div class="bottom-actions">', unsafe_allow_html=True)
         f1, f2, f3 = st.columns([6, 1, 1])
