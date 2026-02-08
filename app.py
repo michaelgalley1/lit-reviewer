@@ -20,8 +20,7 @@ def load_data():
         try:
             with open(DB_FILE, "r") as f:
                 data = json.load(f)
-                # Migration: If old format (list of papers), convert to dict with metadata
-                # New format: "ProjectName": {"papers": [], "last_accessed": float}
+                # Migration logic for file data
                 new_data = {}
                 for k, v in data.items():
                     if isinstance(v, list):
@@ -183,16 +182,21 @@ if check_password():
                 elif new_name in st.session_state.projects:
                     st.error("Project already exists.")
 
-        # REMOVED SPACER HERE to pull list up
+        # NO SPACER HERE - TIGHT LAYOUT
         
         projects = list(st.session_state.projects.keys())
         
         if not projects:
             st.info("No projects yet.")
         else:
-            # SORT PROJECTS BY LAST ACCESSED (Descending)
-            # We use .get('last_accessed', 0) to handle legacy projects without timestamps
-            sorted_projects = sorted(projects, key=lambda x: st.session_state.projects[x].get("last_accessed", 0), reverse=True)
+            # SAFETY SORT: Handles both old list format and new dict format
+            def get_timestamp(proj_key):
+                data = st.session_state.projects[proj_key]
+                if isinstance(data, dict):
+                    return data.get("last_accessed", 0)
+                return 0 # Old format gets 0 timestamp (bottom of list)
+
+            sorted_projects = sorted(projects, key=get_timestamp, reverse=True)
 
             st.markdown("### Your Projects")
             for proj_name in sorted_projects:
@@ -224,9 +228,8 @@ if check_password():
                         if st.button("➡️", key=f"open_{proj_name}", help=f"Open {proj_name}"):
                             st.session_state.active_project = proj_name
                             
-                            # Update timestamp on open
+                            # Upgrade old data format on fly if needed
                             if isinstance(st.session_state.projects[proj_name], list):
-                                # Convert old format on fly
                                 st.session_state.projects[proj_name] = {"papers": st.session_state.projects[proj_name], "last_accessed": time.time()}
                             else:
                                 st.session_state.projects[proj_name]["last_accessed"] = time.time()
@@ -310,7 +313,7 @@ if check_password():
                     }
                     
                     st.session_state.projects[st.session_state.active_project]["papers"].append(new_paper)
-                    st.session_state.projects[st.session_state.active_project]["last_accessed"] = time.time() # Update time
+                    st.session_state.projects[st.session_state.active_project]["last_accessed"] = time.time()
                     
                     st.session_state.session_uploads.add(file.name)
                     save_data(st.session_state.projects)
