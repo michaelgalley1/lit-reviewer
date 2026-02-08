@@ -7,7 +7,6 @@ import re
 import json
 import os
 import time
-from datetime import datetime
 
 # 1. PAGE CONFIGURATION
 st.set_page_config(page_title="Literature Review Buddy", page_icon="📚", layout="wide")
@@ -56,24 +55,12 @@ div[data-testid="stButton"] button:hover {
     border-color: var(--buddy-green) !important;
 }
 
-/* ICON BUTTONS (Library Page) */
-.icon-btn div[data-testid="stButton"] button {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    height: 38px !important;
-    width: 38px !important;
-    padding: 0 !important;
-    border: none !important;
-    background: transparent !important;
-}
-
 /* PINNED BOTTOM-RIGHT DELETE BUTTON */
 .card-del-footer {
     display: flex !important;
     justify-content: flex-end !important;
     width: 100% !important;
-    margin-top: 1.5rem !important;
+    margin-top: 1rem !important;
 }
 
 .card-del-footer div[data-testid="stButton"] {
@@ -92,7 +79,7 @@ div[data-testid="stButton"] button:hover {
     white-space: nowrap !important;
 }
 
-/* PROJECT PAGE STYLES */
+/* HEADER STYLES */
 .fixed-header-bg {
     position: fixed;
     top: 0;
@@ -155,11 +142,9 @@ if check_password():
         st.session_state.projects = load_data()
     if 'active_project' not in st.session_state:
         st.session_state.active_project = None 
-    if 'renaming_project' not in st.session_state:
-        st.session_state.renaming_project = None
 
     if st.session_state.active_project is None:
-        # LIBRARY VIEW (Simplified for this version)
+        # LIBRARY VIEW
         st.markdown('<div><h1 style="margin:0; font-size: 2.5rem; color:#0000FF;">🗂️ Project Library</h1><p style="color:#18A48C; font-weight: bold; font-size: 1.1rem; margin-bottom: 1.25rem;">Select an existing review or start a new one.</p></div>', unsafe_allow_html=True)
         
         with st.container(border=True):
@@ -172,16 +157,13 @@ if check_password():
                     st.session_state.active_project = new_name
                     st.rerun()
 
-        # Render Project List
-        projects = list(st.session_state.projects.keys())
-        for proj_name in projects:
+        for proj_name in st.session_state.projects.keys():
             with st.container(border=True):
                 col_n, col_o = st.columns([8, 1])
                 col_n.write(f"📍 **{proj_name}**")
                 if col_o.button("➡️", key=f"open_{proj_name}"):
                     st.session_state.active_project = proj_name
                     st.rerun()
-
     else:
         # PROJECT VIEW
         st.markdown(f'<div class="fixed-header-bg"><div class="fixed-header-text"><h1>{st.session_state.active_project}</h1></div></div>', unsafe_allow_html=True)
@@ -209,7 +191,7 @@ if check_password():
                 try:
                     reader = PdfReader(file)
                     text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
-                    prompt = f"PhD systematic review. Labels: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. Text: {text[:30000]}"
+                    prompt = f"PhD systematic review. sophisticated prose. Labels: [TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. Text: {text[:30000]}"
                     res = llm.invoke([HumanMessage(content=prompt)]).content
                     res = re.sub(r'\*', '', res)
                     def ext(label, next_l=None):
@@ -217,17 +199,17 @@ if check_password():
                         m = re.search(p, res, re.DOTALL | re.IGNORECASE)
                         return m.group(1).strip() if m else "Not found."
                     
-                    # EXTRACT LEAD AUTHOR SURNAME
-                    full_authors = ext("AUTHORS", "YEAR")
-                    lead_author = full_authors.split(',')[0].split(' ')[0].strip() # Takes first word/name before a comma or space
-                    pub_year = ext("YEAR", "REFERENCE")
-                    cite_ref = f"{lead_author}, {pub_year}"
+                    # LOGIC: Extract lead author and year
+                    auth_str = ext("AUTHORS", "YEAR")
+                    lead_surname = auth_str.split(',')[0].split(' ')[0].strip()
+                    year_str = ext("YEAR", "REFERENCE")
+                    cite_ref = f"{lead_surname}, {year_str}"
 
                     new_paper = {
                         "Ref": cite_ref,
                         "Title": ext("TITLE", "AUTHORS"), 
-                        "Authors": full_authors, 
-                        "Year": pub_year, 
+                        "Authors": auth_str, 
+                        "Year": year_str, 
                         "Reference": ext("REFERENCE", "SUMMARY"), 
                         "Summary": ext("SUMMARY", "BACKGROUND"), 
                         "Background": ext("BACKGROUND", "METHODOLOGY"), 
@@ -250,10 +232,11 @@ if check_password():
                 for idx, r in enumerate(reversed(papers_data)):
                     real_idx = len(papers_data) - 1 - idx
                     with st.container(border=True):
-                        col_metric, col_title = st.columns([3, 12])
-                        with col_metric: 
-                            st.metric("Citation", r['Ref']) # CHANGED FROM # TO REF
-                        with col_title: 
+                        col_m, col_t = st.columns([3, 12])
+                        with col_m:
+                            # CRASH FIX: use .get() so old papers without 'Ref' show their index instead
+                            st.metric("Citation", r.get("Ref", f"Paper {real_idx+1}"))
+                        with col_t:
                             st.subheader(r['Title'])
                         
                         st.markdown(f'<div><b>Authors:</b> {r["Authors"]}<br><b>Year:</b> {r["Year"]}<br><b>Full Citation:</b> {r["Reference"]}</div>', unsafe_allow_html=True)
@@ -262,6 +245,7 @@ if check_password():
                         sec = [("📝 Summary", r["Summary"]), ("📖 Background", r["Background"]), ("⚙️ Methodology", r["Methodology"]), ("📍 Context", r["Context"]), ("💡 Findings", r["Findings"]), ("🛡️ Reliability", r["Reliability"])]
                         for k, v in sec: st.markdown(f'<span class="section-title">{k}</span>{v}', unsafe_allow_html=True)
                         
+                        # RIGHT ALIGNED BOTTOM DELETE
                         st.markdown('<div class="card-del-footer">', unsafe_allow_html=True)
                         if st.button("🗑️ Delete Paper", key=f"del_paper_{real_idx}"):
                             st.session_state.projects[st.session_state.active_project]["papers"].pop(real_idx)
@@ -273,7 +257,7 @@ if check_password():
                 st.dataframe(pd.DataFrame(papers_data), use_container_width=True, hide_index=True)
             
             with t3:
-                # Synthesis logic (as per previous working version)
+                # Meta-Synthesis logic
                 pass
 
         st.markdown('<div class="bottom-actions">', unsafe_allow_html=True)
