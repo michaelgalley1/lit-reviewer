@@ -13,22 +13,20 @@ import time
 st.set_page_config(page_title="Literature Review Buddy", page_icon="📚", layout="wide")
 
 # 2. DATABASE CONNECTION (Google Sheets)
-# Replaces local buddy_projects.json with permanent cloud storage
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def load_full_library():
     try:
-        # Reads the entire sheet with no caching to ensure fresh data
         df = conn.read(ttl=0)
-        if df.empty: return {}
+        if df is None or df.empty: return {}
         
         library = {}
         for _, row in df.iterrows():
-            proj = row['Project']
+            proj = row.get('Project')
+            if not proj: continue
             if proj not in library:
                 library[proj] = {"papers": [], "last_accessed": row.get('LastAccessed', 0)}
             
-            # If the row contains paper data, reconstruct the paper dictionary
             if pd.notna(row.get('Title')):
                 library[proj]["papers"].append({
                     "#": row.get('#'), "Title": row.get('Title'), "Authors": row.get('Authors'),
@@ -41,7 +39,6 @@ def load_full_library():
         return {}
 
 def save_full_library(library):
-    # Flatten the project/paper dictionary into a list of rows for the spreadsheet
     flat_data = []
     for proj_name, content in library.items():
         if not content["papers"]:
@@ -54,31 +51,22 @@ def save_full_library(library):
     
     if flat_data:
         new_df = pd.DataFrame(flat_data)
-        # Overwrites the Google Sheet with the new data state
         conn.update(data=new_df)
 
-# 3. STYLING (Green Input Boxes & Card Layout)
+# 3. STYLING
 st.markdown("""
 <style>
 [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
 :root { --buddy-green: #18A48C; --buddy-blue: #0000FF; }
-
-/* Input Box Green Hover/Focus Fix */
 [data-testid="stTextInput"] div[data-baseweb="input"] { border: 1px solid #d3d3d3 !important; }
 [data-testid="stTextInput"] div[data-baseweb="input"]:hover { border-color: var(--buddy-green) !important; }
 [data-testid="stTextInput"] div[data-baseweb="input"]:focus-within { border: 2px solid var(--buddy-green) !important; }
-
-/* Global Button Hover */
 div[data-testid="stButton"] button:hover { background-color: var(--buddy-green) !important; color: white !important; }
-
 .section-title { font-weight: bold; color: #0000FF; margin-top: 1rem; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 0.06rem solid #eee; }
 .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
-
 .fixed-header-bg { position: fixed; top: 0; left: 0; width: 100%; height: 4.5rem; background: white; border-bottom: 0.125rem solid #f0f2f6; z-index: 1000; padding-left: 3.75rem; display: flex; align-items: center; }
 .fixed-header-text h1 { margin: 0; font-size: 2.2rem; color: #0000FF; }
-
 .upload-pull-up { margin-top: -3.0rem !important; }
-
 .card-del-container { display: flex; justify-content: flex-end; width: 100%; margin-top: 1.5rem; }
 .card-del-container div[data-testid="stButton"] button { color: #ff4b4b !important; border: 1px solid #ff4b4b !important; background: transparent !important; font-size: 0.85rem !important; min-width: 140px !important; }
 </style>
@@ -107,12 +95,10 @@ if check_password():
     
     if 'active_project' not in st.session_state:
         st.session_state.active_project = None 
-    if 'renaming_project' not in st.session_state:
-        st.session_state.renaming_project = None
 
     if st.session_state.active_project is None:
         # --- LIBRARY VIEW ---
-        st.markdown('<div><h1 style="color:#0000FF;">🗂️ Project Library</h1><p style="color:#18A48C; font-weight: bold;">Permanent Google Sheets Database Active.</p></div>', unsafe_allow_html=True)
+        st.markdown('<div><h1 style="color:#0000FF;">🗂️ Project Library</h1><p style="color:#18A48C; font-weight: bold;">Permanent Cloud Storage Active.</p></div>', unsafe_allow_html=True)
 
         with st.container(border=True):
             c1, c2 = st.columns([4, 1])
@@ -133,10 +119,6 @@ if check_password():
                     with col_name:
                         p_count = len(st.session_state.projects[proj_name]["papers"])
                         st.markdown(f"**📍 {proj_name}** ({p_count} Papers)")
-                    with col_edit:
-                        if st.button("🖊️", key=f"edit_{proj_name}"):
-                            st.session_state.renaming_project = proj_name
-                            st.rerun()
                     with col_del:
                         if st.button("🗑️", key=f"del_{proj_name}"):
                             del st.session_state.projects[proj_name]
@@ -171,11 +153,10 @@ if check_password():
                     reader = PdfReader(file)
                     text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
                     
-                    # THE SMARTER PHD PROMPT
                     prompt = (
                         "Act as a Senior Academic Researcher and PhD Supervisor specializing in Systematic Literature Reviews. "
                         "Evaluate the logic, methodology, and contribution to the field. "
-                        "Carefully analyze the provided text and extract for the following categories:\n\n"
+                        "Carefully analyze the text and extract for the following categories:\n\n"
                         "[TITLE]: The full title.\n[AUTHORS]: All primary authors.\n[YEAR]: Year of publication.\n"
                         "[REFERENCE]: Full Harvard-style citation.\n"
                         "[SUMMARY]: 2-3 sentence overview of objective and outcome.\n"
@@ -213,19 +194,15 @@ if check_password():
 
         papers_data = st.session_state.projects[st.session_state.active_project]["papers"]
         if papers_data:
-            t1, t2, t3 = st.tabs(["🖼️ Individual Papers", "📊 Master Table", "🧠 Synthesis"])
+            t1, t2 = st.tabs(["🖼️ Individual Papers", "📊 Master Table"])
             with t1:
                 for idx, r in enumerate(reversed(papers_data)):
                     real_idx = len(papers_data) - 1 - idx
                     with st.container(border=True):
-                        col_metric, col_title = st.columns([1, 11])
-                        with col_metric: st.metric("Ref", r.get('#', real_idx + 1))
-                        with col_title: st.subheader(r.get('Title', 'Untitled'))
-                        
-                        st.markdown(f'<div>🖊️ Authors: {r.get("Authors", "N/A")}<br>🗓️ Year: {r.get("Year", "N/A")}<br>🔗 Full Citation: {r.get("Reference", "N/A")}</div>', unsafe_allow_html=True)
+                        st.subheader(f"Ref {r.get('#')}: {r.get('Title')}")
+                        st.markdown(f'🖊️ Authors: {r.get("Authors")} | 🗓️ Year: {r.get("Year")}')
                         st.divider()
-                        
-                        sections = [("📝 Summary", r.get("Summary", "")), ("📖 Background", r.get("Background", "")), ("⚙️ Methodology", r.get("Methodology", "")), ("📍 Context", r.get("Context", "")), ("💡 Findings", r.get("Findings", "")), ("🛡️ Reliability", r.get("Reliability", ""))]
+                        sections = [("📝 Summary", r.get("Summary")), ("📖 Background", r.get("Background")), ("⚙️ Methodology", r.get("Methodology")), ("📍 Context", r.get("Context")), ("💡 Findings", r.get("Findings")), ("🛡️ Reliability", r.get("Reliability"))]
                         for k, v in sections: 
                             st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
                         
@@ -236,19 +213,13 @@ if check_password():
                             save_full_library(st.session_state.projects)
                             st.rerun()
                         st.markdown('</div>', unsafe_allow_html=True)
-
             with t2:
                 df = pd.DataFrame(papers_data)
                 st.dataframe(df, use_container_width=True, hide_index=True)
-                st.download_button(label="📊 Export CSV", data=df.to_csv(index=False).encode('utf-8-sig'), file_name=f"{st.session_state.active_project}.csv", use_container_width=True)
 
-        # Bottom Actions Bar
         st.markdown('<div class="bottom-actions">', unsafe_allow_html=True)
-        f1, f2, f3 = st.columns([6, 1, 1])
+        f1, f2 = st.columns([8, 1])
         with f2:
-            if st.button("💾 Save", key="final_save", use_container_width=True):
-                save_full_library(st.session_state.projects); st.toast("Saved to Google Sheets!", icon="✅")
-        with f3:
             if st.button("🏠 Library", key="final_lib", use_container_width=True):
-                save_full_library(st.session_state.projects); st.session_state.active_project = None; st.rerun()
+                st.session_state.active_project = None; st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
