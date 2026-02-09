@@ -35,7 +35,7 @@ def save_data(data):
     with open(DB_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
-# 3. STYLING
+# 3. STYLING (Green/Blue Branding)
 st.markdown("""
 <style>
 [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
@@ -220,8 +220,7 @@ if check_password():
         st.markdown(f'<div class="fixed-header-bg"><div class="fixed-header-text"><h1>{st.session_state.active_project}</h1></div></div>', unsafe_allow_html=True)
         st.markdown('<div class="upload-pull-up">', unsafe_allow_html=True)
         
-        llm = None
-        if api_key: llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
+        llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key, temperature=0.1)
         
         uploaded_files = st.file_uploader("Upload academic papers (PDF)", type="pdf", accept_multiple_files=True)
         run_review = st.button("🔬 Analyse paper", use_container_width=True)
@@ -239,23 +238,35 @@ if check_password():
                 
                 try:
                     reader = PdfReader(file)
-                    # Increased text sample for better metadata extraction
-                    text = "".join([p.extract_text() for p in reader.pages[:10] if p.extract_text()]).strip()
+                    # Read full paper text but cap at 45k chars for API stability
+                    text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
                     
                     if not text:
                         st.toast(f"⚠️ Could not extract text from {file.name}", icon="❌")
                         continue
 
+                    # --- RESTORED PhD SUPERVISOR PROMPT ---
                     prompt = (
-                        "Act as a Senior Academic Researcher and PhD Supervisor. Analysis categories:\n"
-                        "[TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].\n"
-                        "Rules: Output labels in brackets. No bold. No bullets. Text: " + text[:30000]
+                        "Act as a Senior Academic Researcher and PhD Supervisor specializing in Systematic Literature Reviews. "
+                        "Evaluate the logic, methodology, and contribution to the field. Provide critical appraisal. "
+                        "Extract information for these categories precisely:\n\n"
+                        "[TITLE]: Full academic title.\n"
+                        "[AUTHORS]: Primary authors.\n"
+                        "[YEAR]: Publication year.\n"
+                        "[REFERENCE]: Full Harvard-style citation.\n"
+                        "[SUMMARY]: Core objective and outcome (2-3 sentences).\n"
+                        "[BACKGROUND]: Gap in literature and theoretical framework.\n"
+                        "[METHODOLOGY]: Design, sample size (N=), and instruments.\n"
+                        "[CONTEXT]: Location and population.\n"
+                        "[FINDINGS]: Results, statistical significance, and how it builds on previous work.\n"
+                        "[RELIABILITY]: Critique limitations, biases, and p-values.\n\n"
+                        "Rules: Output ONLY labels in brackets followed by analysis. No bold/bullets. "
+                        "Text: " + text[:45000]
                     )
                     
                     res = llm.invoke([HumanMessage(content=prompt)]).content
                     res = re.sub(r'\*', '', res) 
                     
-                    # FUZZY EXTRACTION: Catches labels even if AI varies formatting
                     def ext(label):
                         p = rf"\[{label}\]\s*:?\s*(.*?)(?=\s*\[|$)"
                         m = re.search(p, res, re.DOTALL | re.IGNORECASE)
@@ -303,11 +314,11 @@ if check_password():
                 st.download_button("📊 Export CSV", df.to_csv(index=False).encode('utf-8-sig'), f"{st.session_state.active_project}.csv", use_container_width=True)
 
             with t3:
-                # Meta-Synthesis wrapped in the requested card
+                # Meta-Synthesis Card
                 with st.container(border=True):
                     with st.spinner("Synthesizing..."):
                         evidence = "".join([f"Paper {r.get('#')}: {r.get('Findings')}\n" for r in papers_data])
-                        synth_p = f"Synthesis of literature. Labels: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE]. Evidence: {evidence}"
+                        synth_p = f"Act as PhD Supervisor. Synthesize these findings critically. Labels: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE]. Evidence: {evidence}"
                         raw_s = llm.invoke([HumanMessage(content=synth_p)]).content
                         clean_s = re.sub(r'\*', '', raw_s)
                         def gs(l, n=None):
