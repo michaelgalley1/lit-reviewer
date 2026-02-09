@@ -18,8 +18,7 @@ def load_data():
     if os.path.exists(DB_FILE):
         try:
             with open(DB_FILE, "r") as f:
-                data = json.load(f)
-                return data
+                return json.load(f)
         except:
             return {}
     return {}
@@ -28,17 +27,17 @@ def save_data(data):
     with open(DB_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
-# 3. STYLING (Fixed Red Borders & Hover States)
+# 3. STYLING (Removed Red Margins, Restored Green/Blue Branding)
 st.markdown("""
 <style>
 [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
 :root { --buddy-green: #18A48C; --buddy-blue: #0000FF; }
 
-/* REMOVE ALL RED MARGINS/BORDERS */
+/* Global Border Fix (Nuke Red) */
 div[data-baseweb="input"] { border: 1px solid #d3d3d3 !important; }
-.stAlert { border: none !important; }
+div[data-baseweb="input"]:focus-within { border: 2px solid var(--buddy-green) !important; }
 
-/* TAB STYLING - Green underline & text (Hiding default red) */
+/* TAB STYLING */
 button[data-baseweb="tab"] { background-color: transparent !important; }
 button[data-baseweb="tab"]:hover { color: var(--buddy-green) !important; }
 button[data-baseweb="tab"][aria-selected="true"] {
@@ -47,10 +46,6 @@ button[data-baseweb="tab"][aria-selected="true"] {
 }
 div[data-baseweb="tab-highlight"] { display: none !important; }
 
-/* INPUT HOVER/FOCUS */
-[data-testid="stTextInput"] div[data-baseweb="input"]:hover { border-color: var(--buddy-green) !important; }
-[data-testid="stTextInput"] div[data-baseweb="input"]:focus-within { border: 2px solid var(--buddy-green) !important; }
-
 /* BUTTON HOVER */
 div[data-testid="stButton"] button:hover {
     background-color: var(--buddy-green) !important;
@@ -58,10 +53,10 @@ div[data-testid="stButton"] button:hover {
     border-color: var(--buddy-green) !important;
 }
 
-.section-title { font-weight: bold; color: #0000FF; margin-top: 1rem; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 0.06rem solid #eee; }
+.section-title { font-weight: bold; color: var(--buddy-blue); margin-top: 1rem; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 0.06rem solid #eee; }
 .section-content { display: block; margin-bottom: 10px; line-height: 1.6; color: #333; }
 .fixed-header-bg { position: fixed; top: 0; left: 0; width: 100%; height: 4.5rem; background: white; border-bottom: 0.125rem solid #f0f2f6; z-index: 1000; padding-left: 3.75rem; display: flex; align-items: center; }
-.fixed-header-text h1 { margin: 0; font-size: 2.2rem; color: #0000FF; }
+.fixed-header-text h1 { margin: 0; font-size: 2.2rem; color: var(--buddy-blue); }
 .upload-pull-up { margin-top: -3.0rem !important; }
 </style>
 """, unsafe_allow_html=True)
@@ -125,16 +120,18 @@ if check_password():
             if uploaded_files:
                 progress_container = st.empty()
                 for file in uploaded_files:
-                    progress_container.info(f"📖 Processing: {file.name}...")
+                    progress_container.info(f"📖 Reading FULL paper: {file.name}...")
                     try:
                         reader = PdfReader(file)
-                        # Scanning first 12 pages only for reliability
-                        text = "".join([p.extract_text() for p in reader.pages[:12] if p.extract_text()]).strip()
+                        # READ FULL PAPER
+                        text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
                         
+                        # Use a max character cap to avoid AI crashing on 100+ page papers
+                        # 40,000 chars is roughly 25-30 pages of pure text.
                         prompt = (
-                            "Extract ONLY these labels in brackets followed by text: "
+                            "Act as PhD Supervisor. Extract ONLY these labels in brackets followed by text: "
                             "[TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. "
-                            "No bold. No stars. Text: " + text[:35000]
+                            "No bold. No stars. Text: " + text[:40000]
                         )
                         
                         res = llm.invoke([HumanMessage(content=prompt)]).content
@@ -162,7 +159,7 @@ if check_password():
                 st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # TABS
+        # TAB DISPLAY
         current_papers = st.session_state.projects[st.session_state.active_project]["papers"]
         if current_papers:
             t1, t2, t3 = st.tabs(["🖼️ Individual Papers", "📊 Master Table", "🧠 Synthesis"])
@@ -180,6 +177,7 @@ if check_password():
                 st.dataframe(df, use_container_width=True, hide_index=True)
             
             with t3:
+                # Meta-Synthesis Card
                 with st.container(border=True):
                     st.markdown("### Executive Synthesis")
                     evidence = "".join([f"Paper {r.get('#')}: {r.get('Findings')}\n" for r in current_papers])
