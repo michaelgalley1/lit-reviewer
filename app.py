@@ -49,7 +49,7 @@ st.markdown("""
     padding-bottom: 2rem !important;
 }
 
-/* TAB STYLING - Green underline & Green text (Hiding default red) */
+/* TAB STYLING - Green underline & Green text */
 button[data-baseweb="tab"] {
     background-color: transparent !important;
 }
@@ -85,33 +85,11 @@ div[data-testid="stButton"] button:hover {
 
 /* ICON BUTTONS */
 .icon-btn div[data-testid="stButton"] button {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
     height: 38px !important;
     width: 38px !important;
     padding: 0 !important;
     border: none !important;
     background: transparent !important;
-}
-
-/* CARD DELETE BUTTON */
-.card-del-container {
-    display: flex !important;
-    justify-content: flex-end !important;
-    width: 100% !important;
-    margin-top: 1.5rem !important;
-}
-
-.card-del-container div[data-testid="stButton"] button {
-    color: #ff4b4b !important;
-    border: 1px solid #ff4b4b !important;
-    background: transparent !important;
-    font-size: 0.85rem !important;
-    height: 34px !important;
-    padding: 0 15px !important;
-    min-width: 140px !important; 
-    width: auto !important;
 }
 
 /* PROJECT PAGE STYLES */
@@ -141,13 +119,6 @@ div[data-testid="stButton"] button:hover {
     padding-top: 1rem;       
     padding-bottom: 2rem;
     border-top: 0.06rem solid #eee;
-}
-
-div[data-testid="stButton"] > button:not([kind="secondary"]) {
-    border: 0.06rem solid var(--buddy-green) !important;
-    color: var(--buddy-green) !important;
-    background: transparent !important;
-    font-weight: bold !important;
 }
 
 .section-title { font-weight: bold; color: #0000FF; margin-top: 1rem; display: block; text-transform: uppercase; font-size: 0.85rem; border-bottom: 0.06rem solid #eee; }
@@ -259,65 +230,53 @@ if check_password():
         current_proj = st.session_state.projects[st.session_state.active_project]
 
         if uploaded_files and llm and run_review:
-            progress_text = st.empty()
+            progress_container = st.empty()
             if 'session_uploads' not in st.session_state: st.session_state.session_uploads = set()
+            
             for file in uploaded_files:
                 if file.name in st.session_state.session_uploads: continue
-                progress_text.text(f"📖 Critically reviewing: {file.name}...")
+                progress_container.text(f"📖 Critically reviewing: {file.name}...")
+                
                 try:
                     reader = PdfReader(file)
-                    text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
+                    # Increased text sample for better metadata extraction
+                    text = "".join([p.extract_text() for p in reader.pages[:10] if p.extract_text()]).strip()
                     
+                    if not text:
+                        st.toast(f"⚠️ Could not extract text from {file.name}", icon="❌")
+                        continue
+
                     prompt = (
-                        "Act as a Senior Academic Researcher and PhD Supervisor specializing in Systematic Literature Reviews. "
-                        "Your goal is to provide a high-level, critical appraisal of the provided text. Do not simply summarize; "
-                        "evaluate the logic, methodology, and contribution to the field. "
-                        "Carefully analyze the provided paper text and extract information for the following categories:\n\n"
-                        "[TITLE]: The full academic title of the paper.\n"
-                        "[AUTHORS]: List all primary authors.\n"
-                        "[YEAR]: Year of publication.\n"
-                        "[REFERENCE]: Provide a full Harvard-style citation.\n"
-                        "[SUMMARY]: A concise overview (2-3 sentences) of the paper's core objective and outcome.\n"
-                        "[BACKGROUND]: What specific gap in the existing literature are the authors trying to fill? What is the theoretical framework?\n"
-                        "[METHODOLOGY]: Identify the research design (e.g., Experimental, Qualitative, Meta-Analysis), the sample size (N=), and the specific tools/instruments used.\n"
-                        "[CONTEXT]: Where is the study set or the papers from? (e.g. country, population included in analyses).\n"
-                        "[FINDINGS]: What are the primary results? Be specific about statistical significance or core themes discovered. How does this work build upon or contradict previous seminal works in the field?\n"
-                        "[RELIABILITY]: Critically evaluate the study. Are there limitations in the sample? Potential biases? Does the conclusion actually follow from the data provided? Check if the authors mentioned p-values or confidence intervals.\n\n"
-                        "STRICT FORMATTING RULES:\n"
-                        "- Output ONLY the labels above in brackets followed by your analysis.\n"
-                        "- Do not include an introduction, a 'Here is the analysis,' or a conclusion.\n"
-                        "- Do not use bolding or bullet points within the text.\n"
-                        "- If information is missing, write 'Not explicitly stated in text.'\n\n"
-                        f"TEXT TO ANALYZE: {text[:30000]}"
+                        "Act as a Senior Academic Researcher and PhD Supervisor. Analysis categories:\n"
+                        "[TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY].\n"
+                        "Rules: Output labels in brackets. No bold. No bullets. Text: " + text[:30000]
                     )
                     
                     res = llm.invoke([HumanMessage(content=prompt)]).content
                     res = re.sub(r'\*', '', res) 
                     
+                    # FUZZY EXTRACTION: Catches labels even if AI varies formatting
                     def ext(label):
                         p = rf"\[{label}\]\s*:?\s*(.*?)(?=\s*\[|$)"
                         m = re.search(p, res, re.DOTALL | re.IGNORECASE)
-                        return m.group(1).strip() if m else "Not explicitly stated in text."
-                    
+                        return m.group(1).strip() if m else "Not explicitly stated."
+
                     new_paper = {
-                        "#": len(current_proj["papers"]) + 1, 
-                        "Title": ext("TITLE").capitalize(), 
-                        "Authors": ext("AUTHORS"), 
-                        "Year": ext("YEAR"), 
-                        "Reference": ext("REFERENCE"), 
-                        "Summary": ext("SUMMARY"), 
-                        "Background": ext("BACKGROUND"), 
-                        "Methodology": ext("METHODOLOGY"), 
-                        "Context": ext("CONTEXT"), 
-                        "Findings": ext("FINDINGS"), 
+                        "#": len(current_proj["papers"]) + 1,
+                        "Title": ext("TITLE"), "Authors": ext("AUTHORS"), "Year": ext("YEAR"), 
+                        "Reference": ext("REFERENCE"), "Summary": ext("SUMMARY"), 
+                        "Background": ext("BACKGROUND"), "Methodology": ext("METHODOLOGY"), 
+                        "Context": ext("CONTEXT"), "Findings": ext("FINDINGS"), 
                         "Reliability": ext("RELIABILITY")
                     }
                     st.session_state.projects[st.session_state.active_project]["papers"].append(new_paper)
                     st.session_state.projects[st.session_state.active_project]["last_accessed"] = time.time()
                     st.session_state.session_uploads.add(file.name)
                     save_data(st.session_state.projects)
-                except Exception as e: st.error(f"Error: {e}")
-            progress_text.empty()
+                except Exception as e:
+                    st.error(f"Error processing {file.name}: {e}")
+            
+            progress_container.empty()
             st.rerun()
 
         papers_data = st.session_state.projects[st.session_state.active_project]["papers"]
@@ -327,58 +286,47 @@ if check_password():
                 for idx, r in enumerate(reversed(papers_data)):
                     real_idx = len(papers_data) - 1 - idx
                     with st.container(border=True):
-                        col_metric, col_title = st.columns([1, 11])
-                        with col_metric: st.metric("Ref", r.get('#', real_idx + 1))
-                        with col_title: st.subheader(r.get('Title', 'Untitled'))
-                        
-                        st.markdown(f'<div>🖊️ Authors: {r.get("Authors", "N/A")}<br>🗓️ Year: {r.get("Year", "N/A")}<br>🔗 Full Citation: {r.get("Reference", "N/A")}</div>', unsafe_allow_html=True)
+                        st.subheader(r.get('Title', 'Untitled'))
+                        st.markdown(f'🖊️ Authors: {r.get("Authors", "N/A")} | 🗓️ Year: {r.get("Year", "N/A")}')
                         st.divider()
+                        sections = [("📝 Summary", "Summary"), ("📖 Background", "Background"), ("⚙️ Methodology", "Methodology"), ("📍 Context", "Context"), ("💡 Findings", "Findings"), ("🛡️ Reliability", "Reliability")]
+                        for label, key in sections:
+                            st.markdown(f'<span class="section-title">{label}</span><span class="section-content">{r.get(key, "")}</span>', unsafe_allow_html=True)
                         
-                        sections = [
-                            ("📝 Summary", r.get("Summary", "")), 
-                            ("📖 Background", r.get("Background", "")), 
-                            ("⚙️ Methodology", r.get("Methodology", "")), 
-                            ("📍 Context", r.get("Context", "")), 
-                            ("💡 Findings", r.get("Findings", "")), 
-                            ("🛡️ Reliability", r.get("Reliability", ""))
-                        ]
-                        for k, v in sections: 
-                            st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{v}</span>', unsafe_allow_html=True)
-                        
-                        st.markdown('<div class="card-del-container">', unsafe_allow_html=True)
-                        if st.button("🗑️ Delete Paper", key=f"del_paper_{real_idx}"):
+                        if st.button("🗑️ Delete Paper", key=f"del_{real_idx}"):
                             st.session_state.projects[st.session_state.active_project]["papers"].pop(real_idx)
-                            for i, p in enumerate(st.session_state.projects[st.session_state.active_project]["papers"]): p["#"] = i + 1
-                            save_data(st.session_state.projects)
-                            st.rerun()
-                        st.markdown('</div>', unsafe_allow_html=True)
+                            save_data(st.session_state.projects); st.rerun()
 
             with t2:
                 df = pd.DataFrame(papers_data)
                 st.dataframe(df, use_container_width=True, hide_index=True)
-                st.download_button(label="📊 Export CSV", data=df.to_csv(index=False).encode('utf-8-sig'), file_name=f"{st.session_state.active_project}.csv", use_container_width=True)
+                st.download_button("📊 Export CSV", df.to_csv(index=False).encode('utf-8-sig'), f"{st.session_state.active_project}.csv", use_container_width=True)
+
             with t3:
-                # 3. SYNTHESIS CARD WRAPPER
+                # Meta-Synthesis wrapped in the requested card
                 with st.container(border=True):
-                    with st.spinner("Generating Meta-Synthesis..."):
-                        evidence = "".join([f"Paper {r.get('#')} ({r.get('Year')}): Findings: {r.get('Findings')}\n" for r in papers_data])
+                    with st.spinner("Synthesizing..."):
+                        evidence = "".join([f"Paper {r.get('#')}: {r.get('Findings')}\n" for r in papers_data])
                         synth_p = f"Synthesis of literature. Labels: [OVERVIEW], [PATTERNS], [CONTRADICTIONS], [FUTURE]. Evidence: {evidence}"
                         raw_s = llm.invoke([HumanMessage(content=synth_p)]).content
                         clean_s = re.sub(r'\*', '', raw_s)
                         def gs(l, n=None):
                             p = rf"\[{l}\]:?\s*(.*?)(?=\s*\[{n}\]|$)" if n else rf"\[{l}\]:?\s*(.*)"
-                            m = re.search(p, clean_s, re.DOTALL | re.IGNORECASE); return m.group(1).strip() if m else "Detail not found."
+                            m = re.search(p, clean_s, re.DOTALL | re.IGNORECASE)
+                            return m.group(1).strip() if m else "Analysis pending."
+                        
                         st.markdown("### 🎯 Executive Overview"); st.write(gs("OVERVIEW", "PATTERNS"))
                         st.markdown("### 📈 Cross-Study Patterns"); st.write(gs("PATTERNS", "CONTRADICTIONS"))
                         st.markdown("### ⚖️ Conflicts & Contradictions"); st.write(gs("CONTRADICTIONS", "FUTURE"))
                         st.markdown("### 🚀 Future Research Directions"); st.write(gs("FUTURE"))
 
+        # Bottom Navigation
         st.markdown('<div class="bottom-actions">', unsafe_allow_html=True)
-        f1, f2, f3 = st.columns([6, 1, 1])
-        with f2:
-            if st.button("💾 Save", key="final_save", use_container_width=True):
-                save_data(st.session_state.projects); st.toast("Project Saved!", icon="✅")
-        with f3:
-            if st.button("🏠 Library", key="final_lib", use_container_width=True):
-                save_data(st.session_state.projects); st.session_state.active_project = None; st.rerun()
+        col_s, col_l = st.columns([1, 1])
+        with col_s:
+            if st.button("💾 Save Project", use_container_width=True):
+                save_data(st.session_state.projects); st.toast("Saved!", icon="✅")
+        with col_l:
+            if st.button("🏠 Library", use_container_width=True):
+                st.session_state.active_project = None; st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
