@@ -27,17 +27,15 @@ def save_data(data):
     with open(DB_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
-# 3. STYLING (Removed Red Margins, Restored Green/Blue Branding)
+# 3. STYLING (Blue/Green Branding, No Red Borders)
 st.markdown("""
 <style>
 [data-testid="stHeader"] { background-color: rgba(255, 255, 255, 0); }
 :root { --buddy-green: #18A48C; --buddy-blue: #0000FF; }
 
-/* Global Border Fix (Nuke Red) */
 div[data-baseweb="input"] { border: 1px solid #d3d3d3 !important; }
 div[data-baseweb="input"]:focus-within { border: 2px solid var(--buddy-green) !important; }
 
-/* TAB STYLING */
 button[data-baseweb="tab"] { background-color: transparent !important; }
 button[data-baseweb="tab"]:hover { color: var(--buddy-green) !important; }
 button[data-baseweb="tab"][aria-selected="true"] {
@@ -46,7 +44,6 @@ button[data-baseweb="tab"][aria-selected="true"] {
 }
 div[data-baseweb="tab-highlight"] { display: none !important; }
 
-/* BUTTON HOVER */
 div[data-testid="stButton"] button:hover {
     background-color: var(--buddy-green) !important;
     color: white !important;
@@ -63,6 +60,7 @@ div[data-testid="stButton"] button:hover {
 
 # 4. AUTHENTICATION
 def check_password():
+    # Fetch password from secrets
     correct_password = st.secrets.get("APP_PASSWORD")
     if "password_correct" not in st.session_state:
         st.markdown('<h1>📚 Literature Review Buddy</h1>', unsafe_allow_html=True)
@@ -77,13 +75,13 @@ def check_password():
 
 # 5. MAIN LOGIC
 if check_password():
-    api_key = st.secrets.get("GEMINI_API_KEY")
+    # SECURE API KEY FETCH
+    api_key = st.secrets["GEMINI_API_KEY"]
 
     if 'projects' not in st.session_state: st.session_state.projects = load_data()
     if 'active_project' not in st.session_state: st.session_state.active_project = None 
 
     if st.session_state.active_project is None:
-        # --- LIBRARY VIEW ---
         st.markdown('<div><h1 style="color:#0000FF;">🗂️ Project Library</h1><p style="color:#18A48C; font-weight: bold;">Select an existing review or start a new one</p></div>', unsafe_allow_html=True)
         with st.container(border=True):
             c1, c2 = st.columns([4, 1])
@@ -109,7 +107,6 @@ if check_password():
                         st.rerun()
 
     else:
-        # --- PROJECT VIEW ---
         st.markdown(f'<div class="fixed-header-bg"><div class="fixed-header-text"><h1>{st.session_state.active_project}</h1></div></div>', unsafe_allow_html=True)
         st.markdown('<div class="upload-pull-up">', unsafe_allow_html=True)
         
@@ -120,18 +117,15 @@ if check_password():
             if uploaded_files:
                 progress_container = st.empty()
                 for file in uploaded_files:
-                    progress_container.info(f"📖 Reading FULL paper: {file.name}...")
+                    progress_container.info(f"📖 Analysing FULL paper: {file.name}...")
                     try:
                         reader = PdfReader(file)
-                        # READ FULL PAPER
                         text = "".join([p.extract_text() for p in reader.pages if p.extract_text()]).strip()
                         
-                        # Use a max character cap to avoid AI crashing on 100+ page papers
-                        # 40,000 chars is roughly 25-30 pages of pure text.
                         prompt = (
-                            "Act as PhD Supervisor. Extract ONLY these labels in brackets followed by text: "
+                            "Extract ONLY these labels in brackets followed by text: "
                             "[TITLE], [AUTHORS], [YEAR], [REFERENCE], [SUMMARY], [BACKGROUND], [METHODOLOGY], [CONTEXT], [FINDINGS], [RELIABILITY]. "
-                            "No bold. No stars. Text: " + text[:40000]
+                            "No bold. No stars. Text: " + text[:45000] # Full paper depth
                         )
                         
                         res = llm.invoke([HumanMessage(content=prompt)]).content
@@ -159,7 +153,6 @@ if check_password():
                 st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # TAB DISPLAY
         current_papers = st.session_state.projects[st.session_state.active_project]["papers"]
         if current_papers:
             t1, t2, t3 = st.tabs(["🖼️ Individual Papers", "📊 Master Table", "🧠 Synthesis"])
@@ -167,17 +160,13 @@ if check_password():
                 for idx, r in enumerate(reversed(current_papers)):
                     with st.container(border=True):
                         st.subheader(r.get("Title", "Untitled"))
-                        st.write(f"🖊️ {r.get('Authors')} | 🗓️ {r.get('Year')}")
                         st.divider()
                         for k, v in [("📝 Summary", "Summary"), ("📖 Background", "Background"), ("⚙️ Methodology", "Methodology"), ("📍 Context", "Context"), ("💡 Findings", "Findings"), ("🛡️ Reliability", "Reliability")]:
                             st.markdown(f'<span class="section-title">{k}</span><span class="section-content">{r.get(v)}</span>', unsafe_allow_html=True)
-            
             with t2:
                 df = pd.DataFrame(current_papers)
                 st.dataframe(df, use_container_width=True, hide_index=True)
-            
             with t3:
-                # Meta-Synthesis Card
                 with st.container(border=True):
                     st.markdown("### Executive Synthesis")
                     evidence = "".join([f"Paper {r.get('#')}: {r.get('Findings')}\n" for r in current_papers])
@@ -186,7 +175,6 @@ if check_password():
                             prompt = "Synthesize these findings critically: " + evidence
                             st.write(llm.invoke([HumanMessage(content=prompt)]).content)
 
-        # FOOTER
         st.divider()
         if st.button("🏠 Library", use_container_width=True):
             st.session_state.active_project = None
